@@ -32,14 +32,15 @@ useEffect(() => {
   startCamera();
 }, []);
 
+/*
 useEffect(() => {
   navigator.serviceWorker?.getRegistrations()
     .then(regs => {
-      alert("SW件数=" + regs.length);
+      // alert("SW件数=" + regs.length);
       console.log(regs);
     });
 }, []);
-
+*/
   const scanQr = async () => {
     try {
       const reader = new BrowserMultiFormatReader();
@@ -69,11 +70,11 @@ useEffect(() => {
         getUserMedia:
         {String(!!navigator.mediaDevices?.getUserMedia)}
       </div>
-      */}
+      
       <div>
         SW:
         {"serviceWorker" in navigator ? "OK" : "NG"}
-      </div>
+      </div>*/}
       <h1>シリアル管理アプリ</h1>
 
       <video
