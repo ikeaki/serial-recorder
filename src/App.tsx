@@ -4,6 +4,9 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [result, setResult] = useState("未読取");
+  const [history, setHistory] = useState<
+  { code: string; time: string }[]
+  >([]);
 
 useEffect(() => {
   async function startCamera() {
@@ -50,7 +53,35 @@ useEffect(() => {
         videoRef.current!
       );
 
-      setResult(result.getText());
+      const text = result.getText().trim();
+
+      setResult(text);
+
+      const exists =
+        history.some(
+          item => item.code === text
+        );
+
+      console.log("読取値:", text);
+      console.log("履歴:", history);
+      console.log("重複:", exists);
+
+      if (exists) {
+        setResult("⚠ 重複: " + text);
+       // alert("重複です");
+        return;
+      }
+
+      const now = new Date().toLocaleString();
+
+      setHistory(prev => [
+        {
+          code: text,
+          time: now,
+        },
+        ...prev,
+      ]);
+      
     } catch (err) {
       console.error(err);
     }
@@ -87,13 +118,56 @@ useEffect(() => {
 
       <br />
 
-      <button onClick={scanQr}>
+      <button
+        style={{
+          width: "100%",
+          height: "50px",
+          fontSize: "20px",
+        }}
+        onClick={scanQr}
+      >
         QR読取
       </button>
 
-      <h2>結果</h2>
+      <h2>最新読取</h2>
+      <div
+        style={{
+          border: "1px solid #ccc",
+          padding: "15px",
+          marginBottom: "20px",
+          fontSize: "20px",
+        }}
+      >
+        {result}
+      </div>
 
-      <div>{result}</div>
+      <button
+        onClick={() => setHistory([])}
+      >
+        履歴クリア
+      </button>
+
+      <h2>履歴 ({history.length}件)</h2>
+
+      {history.length === 0 ? (
+        <p>履歴なし</p>
+      ) : (
+        <ul>
+          {history.map((item, index) => (
+              <li
+                key={index}
+                style={{
+                  textAlign: "left",
+                  marginBottom: "10px",
+                }}
+              >
+              <div>{item.time}</div>
+              <div>{item.code}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+
     </div>
   );
 }
