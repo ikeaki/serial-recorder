@@ -113,7 +113,11 @@ useEffect(() => {
         autoPlay
         playsInline
         muted
-        width={600}
+        style={{
+          width: "100%",
+          height: "250px",
+          objectFit: "cover",
+        }}
       />
 
       <br />
