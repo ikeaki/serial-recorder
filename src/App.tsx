@@ -8,6 +8,15 @@ export default function App() {
   { code: string; time: string }[]
   >([]);
 
+const saveHistory = (
+  data: { code: string; time: string }[]
+) => {
+  localStorage.setItem(
+    "history",
+    JSON.stringify(data)
+  );
+};
+
 useEffect(() => {
   async function startCamera() {
     try {
@@ -33,6 +42,15 @@ useEffect(() => {
   }
 
   startCamera();
+}, []);
+
+useEffect(() => {
+  const saved =
+    localStorage.getItem("history");
+
+  if (saved) {
+    setHistory(JSON.parse(saved));
+  }
 }, []);
 
 /*
@@ -74,13 +92,19 @@ useEffect(() => {
 
       const now = new Date().toLocaleString();
 
-      setHistory(prev => [
-        {
-          code: text,
-          time: now,
-        },
-        ...prev,
-      ]);
+      setHistory(prev => {
+        const newHistory = [
+          {
+            code: text,
+            time: now,
+          },
+          ...prev,
+        ];
+
+        saveHistory(newHistory);
+
+        return newHistory;
+      });
       
     } catch (err) {
       console.error(err);
@@ -146,7 +170,10 @@ useEffect(() => {
       </div>
 
       <button
-        onClick={() => setHistory([])}
+        onClick={() => {
+          setHistory([]);
+          localStorage.removeItem("history");
+        }}
       >
         履歴クリア
       </button>
