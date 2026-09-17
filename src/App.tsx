@@ -1,21 +1,121 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
+const DB_NAME = "serial-db";
+const STORE_NAME = "history";
+
+type HistoryItem = {
+  id?: number;
+  code: string;
+  time: string;
+};
+
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [result, setResult] = useState("未読取");
-  const [history, setHistory] = useState<
-  { code: string; time: string }[]
-  >([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
-const saveHistory = (
-  data: { code: string; time: string }[]
-) => {
-  localStorage.setItem(
-    "history",
-    JSON.stringify(data)
-  );
-};
+  const openDB = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+
+      request.onupgradeneeded = () => {
+        const db = request.result;
+
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+        }
+      };
+
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+
+      request.onerror = () => {
+        reject(request.error);
+      };
+    });
+  };
+
+  const saveRecord = async (
+    code: string,
+    time: string
+  ) => {
+    const db = await openDB();
+
+    const tx =
+      db.transaction(STORE_NAME, "readwrite");
+
+    tx.objectStore(STORE_NAME).add({
+      code,
+      time,
+    });
+  };
+
+  const loadHistory = async () => {
+    const db = await openDB();
+
+    const tx =
+      db.transaction(STORE_NAME, "readonly");
+
+    const store =
+      tx.objectStore(STORE_NAME);
+
+    const request =
+      store.getAll();
+
+    return await new Promise<HistoryItem[]>(
+      (resolve, reject) => {
+        request.onsuccess =
+          () => resolve(request.result);
+
+        request.onerror =
+          () => reject(request.error);
+      }
+    );
+  };
+
+  const clearHistoryDB = async () => {
+    const db = await openDB();
+
+    const tx =
+      db.transaction(STORE_NAME, "readwrite");
+
+    tx.objectStore(STORE_NAME).clear();
+  };
+
+  const existsRecord = async (
+    code: string
+  ): Promise<boolean> => {
+
+    const db = await openDB();
+
+    const tx =
+      db.transaction(STORE_NAME, "readonly");
+
+    const store =
+      tx.objectStore(STORE_NAME);
+
+    const request = store.getAll();
+
+    const data = await new Promise<HistoryItem[]>(
+      (resolve, reject) => {
+
+        request.onsuccess =
+          () => resolve(request.result);
+
+        request.onerror =
+          () => reject(request.error);
+      }
+    );
+
+    return data.some(
+      item => item.code === code
+    );
+  };
 
 useEffect(() => {
   async function startCamera() {
@@ -45,23 +145,14 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  const saved =
-    localStorage.getItem("history");
-
-  if (saved) {
-    setHistory(JSON.parse(saved));
-  }
-}, []);
-
-/*
-useEffect(() => {
-  navigator.serviceWorker?.getRegistrations()
-    .then(regs => {
-      // alert("SW件数=" + regs.length);
-      console.log(regs);
+  loadHistory()
+    .then(data => {
+      setHistory(
+        [...data].reverse()
+      );
     });
 }, []);
-*/
+
   const scanQr = async () => {
     try {
       const reader = new BrowserMultiFormatReader();
@@ -76,13 +167,7 @@ useEffect(() => {
       setResult(text);
 
       const exists =
-        history.some(
-          item => item.code === text
-        );
-
-      console.log("読取値:", text);
-      console.log("履歴:", history);
-      console.log("重複:", exists);
+        await existsRecord(text);
 
       if (exists) {
         setResult("⚠ 重複: " + text);
@@ -92,6 +177,11 @@ useEffect(() => {
 
       const now = new Date().toLocaleString();
 
+      await saveRecord(
+        text,
+        now
+      );
+
       setHistory(prev => {
         const newHistory = [
           {
@@ -100,8 +190,6 @@ useEffect(() => {
           },
           ...prev,
         ];
-
-        saveHistory(newHistory);
 
         return newHistory;
       });
@@ -113,23 +201,7 @@ useEffect(() => {
   
   return (
     <div style={{ padding: 20 }}>
-      {/*
-      <p>{window.location.href}</p>
-      <p>{navigator.userAgent}</p>
-      <div>
-        mediaDevices:
-        {String(!!navigator.mediaDevices)}
-      </div>
 
-      <div>
-        getUserMedia:
-        {String(!!navigator.mediaDevices?.getUserMedia)}
-      </div>
-      
-      <div>
-        SW:
-        {"serviceWorker" in navigator ? "OK" : "NG"}
-      </div>*/}
       <h1>シリアル管理アプリ</h1>
 
       <video
@@ -170,9 +242,9 @@ useEffect(() => {
       </div>
 
       <button
-        onClick={() => {
+        onClick={async () => {
           setHistory([]);
-          localStorage.removeItem("history");
+          await clearHistoryDB();
         }}
       >
         履歴クリア
