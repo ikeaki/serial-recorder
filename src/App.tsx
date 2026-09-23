@@ -15,7 +15,6 @@ export default function App() {
   const [result, setResult] = useState("未読取");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
-  const [pendingCode, setPendingCode] = useState("");
   
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -171,35 +170,7 @@ useEffect(() => {
 
       const text = result.getText().trim();
 
-      //
-      // 1回目
-      //
-      if (pendingCode === "") {
-        setPendingCode(text);
-        setResult("確認待ち: " + text);
-        return;
-      }
-
-      //
-      // 2回目 不一致
-      //
-      if (pendingCode !== text) {
-
-        setResult(
-          `⚠ 不一致
-      ${pendingCode}
-      ↓
-      ${text}`
-        );
-
-        setPendingCode("");
-        return;
-      }
-
-      //
-      // 2回目 一致
-      //
-      setPendingCode("");
+      setResult(text);
 
       const exists =
         await existsRecord(text);
