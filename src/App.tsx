@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
+import * as XLSX from "xlsx";
 
 const DB_NAME = "serial-db";
 const STORE_NAME = "history";
@@ -118,6 +119,32 @@ export default function App() {
     );
   };
 
+  const exportExcel = () => {
+
+    const data = history.map(item => ({
+      日時: item.time,
+      コード: item.code,
+    }));
+
+    const worksheet =
+      XLSX.utils.json_to_sheet(data);
+
+    const workbook =
+      XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "履歴"
+    );
+
+    XLSX.writeFile(
+      workbook,
+      "serial-history.xlsx"
+    );
+  };
+  
+  /* CVS出力
   const exportCsv = () => {
 
     const header = "日時,コード\n";
@@ -154,7 +181,7 @@ export default function App() {
     link.click();
 
     URL.revokeObjectURL(url);
-  };
+  };*/
 
 useEffect(() => {
   async function startCamera() {
@@ -290,9 +317,10 @@ useEffect(() => {
       </div>
 
       <button
-        onClick={exportCsv}
+        //onClick={exportCsv}
+        onClick={exportExcel}
       >
-        CSV出力
+        出力
       </button>
 
       <button
