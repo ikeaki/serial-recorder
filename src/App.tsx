@@ -118,6 +118,40 @@ export default function App() {
     );
   };
 
+  const exportCsv = () => {
+
+    const header = "日時,コード\n";
+
+    const rows = history
+      .map(
+        item =>
+          `"${item.time}","${item.code}"`
+      )
+      .join("\n");
+
+    const csv = header + rows;
+
+    const blob = new Blob(
+      [csv],
+      { type: "text/csv;charset=utf-8;" }
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+
+    link.download =
+      "serial-history.csv";
+
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
 useEffect(() => {
   async function startCamera() {
     try {
@@ -250,6 +284,12 @@ useEffect(() => {
       >
         {result}
       </div>
+
+      <button
+        onClick={exportCsv}
+      >
+        CSV出力
+      </button>
 
       <button
         onClick={async () => {
