@@ -14,6 +14,7 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [result, setResult] = useState("未読取");
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [scanning, setScanning] = useState(false);
 
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -154,6 +155,11 @@ useEffect(() => {
 }, []);
 
   const scanQr = async () => {
+    if (scanning) {
+      return;
+    }
+    setScanning(true);
+    
     try {
       const reader = new BrowserMultiFormatReader();
 
@@ -197,6 +203,10 @@ useEffect(() => {
     } catch (err) {
       console.error(err);
     }
+
+    finally {
+      setScanning(false);
+    }
   };
   
   return (
@@ -224,9 +234,10 @@ useEffect(() => {
           height: "50px",
           fontSize: "20px",
         }}
+        disabled={scanning}
         onClick={scanQr}
       >
-        QR読取
+        {scanning ? "読取中..." : "QR読取"}
       </button>
 
       <h2>最新読取</h2>
