@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import * as XLSX from "xlsx";
+import Tesseract from "tesseract.js";
 
 const DB_NAME = "serial-db";
 const STORE_NAME = "history";
@@ -16,7 +17,8 @@ export default function App() {
   const [result, setResult] = useState("未読取");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
-  
+  const [ocrLoading, setOcrLoading] = useState(false);
+
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, 1);
@@ -290,10 +292,90 @@ useEffect(() => {
     }
   };
   
+  const runOCR = async () => {
+
+    if (!videoRef.current) return;
+
+    setOcrLoading(true);
+
+    try {
+
+      const canvas =
+        document.createElement("canvas");
+
+      canvas.width =
+        videoRef.current.videoWidth;
+
+      canvas.height =
+        videoRef.current.videoHeight;
+
+      const ctx =
+        canvas.getContext("2d");
+
+      if (!ctx) return;
+
+      ctx.drawImage(
+        videoRef.current,
+        0,
+        0
+      );
+
+      const image =
+        canvas.toDataURL("image/png");
+
+      const result =
+        await Tesseract.recognize(
+          image,
+          "eng"
+        );
+
+      const text =
+        result.data.text
+          .replace(/[^0-9A-Za-z]/g, "")
+          .trim();
+
+      const exists =
+        await existsRecord(text);
+
+      if (exists) {
+        setResult("⚠ 重複: " + text);
+        return;
+      }
+
+      const now = new Date().toLocaleString();
+
+      await saveRecord(
+        text,
+        now
+      );
+
+      setHistory(prev => [
+        {
+          code: text,
+          time: now,
+        },
+        ...prev,
+      ]);
+
+      setResult(
+        "OCR: " + text
+      );
+
+    } finally {
+
+      setOcrLoading(false);
+
+    }
+  };
+
   return (
     <div style={{ padding: 20 }}>
 
       <h1>シリアル管理アプリ</h1>
+      <p>
+      対応:
+      QR Code / DataMatrix / Code128 /OCR
+      </p>
 
       <video
         ref={videoRef}
@@ -332,6 +414,20 @@ useEffect(() => {
       >
         {result}
       </div>
+
+      <button
+        onClick={runOCR}
+        disabled={ocrLoading}
+        style={{
+          width: "100%",
+          height: "50px",
+          marginTop: "10px"
+        }}
+      >
+        {ocrLoading
+          ? "OCR認識中..."
+          : "OCR読取"}
+      </button>
 
       <button
         //onClick={exportCsv}
