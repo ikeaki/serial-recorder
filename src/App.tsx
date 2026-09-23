@@ -319,9 +319,43 @@ useEffect(() => {
         0,
         0
       );
+      const cropX =
+        canvas.width * 0.25;
+
+      const cropY =
+        canvas.height * 0.35;
+
+      const cropW =
+        canvas.width * 0.50;
+
+      const cropH =
+        canvas.height * 0.20;
+            
+      const cropCanvas =
+        document.createElement("canvas");
+
+      cropCanvas.width = cropW;
+      cropCanvas.height = cropH;
+
+      const cropCtx =
+        cropCanvas.getContext("2d");
+
+      if (!cropCtx) return;
+
+      cropCtx.drawImage(
+        canvas,
+        cropX,
+        cropY,
+        cropW,
+        cropH,
+        0,
+        0,
+        cropW,
+        cropH
+      );
 
       const image =
-        canvas.toDataURL("image/png");
+        cropCanvas.toDataURL("image/png");
 
       const result =
         await Tesseract.recognize(
@@ -377,17 +411,40 @@ useEffect(() => {
       QR Code / DataMatrix / Code128 /OCR
       </p>
 
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
+      <div
         style={{
+          position: "relative",
           width: "100%",
           height: "250px",
-          objectFit: "cover",
         }}
-      />
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            width: "100%",
+            height: "250px",
+            objectFit: "cover",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            width: "250px",
+            height: "120px",
+            transform: "translate(-50%, -50%)",
+            border: "3px solid #00ff00",
+            borderRadius: "8px",
+            pointerEvents: "none",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
 
       <br />
 
