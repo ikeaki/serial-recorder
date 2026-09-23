@@ -261,6 +261,8 @@ useEffect(() => {
 
       if (exists) {
         playError();
+        vibrateError();
+        
         setResult("⚠ 重複: " + text);
         return;
       }
@@ -273,6 +275,7 @@ useEffect(() => {
       );
 
       playSuccess();
+      vibrateSuccess();
 
       setHistory(prev => {
         const newHistory = [
@@ -376,6 +379,7 @@ useEffect(() => {
 
       if (exists) {
         playError();
+        vibrateError();
         setResult("⚠ 重複: " + text);
         return;
       }
@@ -396,7 +400,8 @@ useEffect(() => {
       ]);
 
       playSuccess();
-
+      vibrateSuccess();
+      
       setResult(
         "OCR: " + text
       );
@@ -457,6 +462,19 @@ useEffect(() => {
       audioContext.close();
     }, 150);
   };
+
+  const vibrateSuccess = () => {
+    if ("vibrate" in navigator) {
+      navigator.vibrate(100);
+    }
+  };
+
+  const vibrateError = () => {
+    if ("vibrate" in navigator) {
+      navigator.vibrate([100, 100, 100]);
+    }
+  };
+
 
   return (
     <div style={{ padding: 20 }}>
