@@ -272,6 +272,7 @@ useEffect(() => {
         now
       );
 
+      playSuccess();
 
       setHistory(prev => {
         const newHistory = [
@@ -385,8 +386,6 @@ useEffect(() => {
         text,
         now
       );
-
-
 
       setHistory(prev => [
         {
