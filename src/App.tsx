@@ -512,12 +512,64 @@ useEffect(() => {
             width: "50%",
             height: "20%",
             transform: "translate(-50%, -50%)",
-            border: "3px solid #00ff00",
-            borderRadius: "8px",
             pointerEvents: "none",
-            boxSizing: "border-box",
           }}
-        />
+        >
+
+          {/* 左上 */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "20px",
+              height: "20px",
+              borderTop: "4px solid gray",
+              borderLeft: "4px solid gray",
+            }}
+          />
+
+          {/* 右上 */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: "20px",
+              height: "20px",
+              borderTop: "4px solid gray",
+              borderRight: "4px solid gray",
+            }}
+          />
+
+          {/* 左下 */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              width: "20px",
+              height: "20px",
+              borderBottom: "4px solid gray",
+              borderLeft: "4px solid gray",
+            }}
+          />
+
+          {/* 右下 */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              right: 0,
+              width: "20px",
+              height: "20px",
+              borderBottom: "4px solid gray",
+              borderRight: "4px solid gray",
+            }}
+          />
+
+        </div>
+
       </div>
 
       <br />
