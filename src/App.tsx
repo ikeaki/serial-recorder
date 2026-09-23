@@ -370,9 +370,12 @@ useEffect(() => {
         );
 
       const text =
-        result.data.text
-          .replace(/[^0-9A-Za-z]/g, "")
-          .trim();
+      result.data.text.trim();
+      
+      if (!/^[0-9A-Z]+$/.test(text)) {
+      setResult("⚠ OCR認識失敗");
+      return;
+      }
 
       const exists =
         await existsRecord(text);
