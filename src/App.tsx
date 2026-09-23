@@ -401,7 +401,7 @@ useEffect(() => {
 
       playSuccess();
       vibrateSuccess();
-      
+
       setResult(
         "OCR: " + text
       );
@@ -471,7 +471,7 @@ useEffect(() => {
 
   const vibrateError = () => {
     if ("vibrate" in navigator) {
-      navigator.vibrate([100, 100, 100]);
+      navigator.vibrate([400,100,100]);
     }
   };
 
