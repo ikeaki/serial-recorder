@@ -260,6 +260,7 @@ useEffect(() => {
         await existsRecord(text);
 
       if (exists) {
+        playError();
         setResult("⚠ 重複: " + text);
         return;
       }
@@ -270,6 +271,7 @@ useEffect(() => {
         text,
         now
       );
+
 
       setHistory(prev => {
         const newHistory = [
@@ -372,6 +374,7 @@ useEffect(() => {
         await existsRecord(text);
 
       if (exists) {
+        playError();
         setResult("⚠ 重複: " + text);
         return;
       }
@@ -383,6 +386,8 @@ useEffect(() => {
         now
       );
 
+
+
       setHistory(prev => [
         {
           code: text,
@@ -390,6 +395,8 @@ useEffect(() => {
         },
         ...prev,
       ]);
+
+      playSuccess();
 
       setResult(
         "OCR: " + text
@@ -400,6 +407,56 @@ useEffect(() => {
       setOcrLoading(false);
 
     }
+  };
+
+  const playSuccess = () => {
+    const audioContext = new AudioContext();
+
+    const oscillator =
+      audioContext.createOscillator();
+
+    const gain =
+      audioContext.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = 1200;
+
+    gain.gain.value = 0.1;
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+
+    setTimeout(() => {
+      oscillator.stop();
+      audioContext.close();
+    }, 100);
+  };
+
+  const playError = () => {
+    const audioContext = new AudioContext();
+
+    const oscillator =
+      audioContext.createOscillator();
+
+    const gain =
+      audioContext.createGain();
+
+    oscillator.type = "square";
+    oscillator.frequency.value = 300;
+
+    gain.gain.value = 0.1;
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+
+    setTimeout(() => {
+      oscillator.stop();
+      audioContext.close();
+    }, 150);
   };
 
   return (
@@ -435,8 +492,8 @@ useEffect(() => {
             position: "absolute",
             left: "50%",
             top: "50%",
-            width: "250px",
-            height: "120px",
+            width: "50%",
+            height: "20%",
             transform: "translate(-50%, -50%)",
             border: "3px solid #00ff00",
             borderRadius: "8px",
