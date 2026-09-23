@@ -131,9 +131,13 @@ export default function App() {
 
     const csv = header + rows;
 
+    const bom = "\uFEFF";
+
     const blob = new Blob(
-      [csv],
-      { type: "text/csv;charset=utf-8;" }
+      [bom + csv],
+      {
+        type: "text/csv;charset=utf-8;"
+      }
     );
 
     const url =
