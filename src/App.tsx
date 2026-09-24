@@ -363,8 +363,6 @@ useEffect(() => {
       const image =
         cropCanvas.toDataURL("image/png");
 
-      window.open(image);
-
       const result =
         await Tesseract.recognize(
           image,
