@@ -488,17 +488,17 @@ useEffect(() => {
       QR Code / DataMatrix / Code128 /OCR
       </p>
 
-      <div
-        style={{
-          position: "relative",
-          width: "90%",
-          maxWidth: "400px",
-          height: "220px",
-          margin: "0 auto",
-          overflow: "hidden",
-          borderRadius: "8px",
-        }}
-      >
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            maxWidth: "450px",
+            height: "280px",
+            margin: "0 auto",
+            overflow: "hidden",
+            borderRadius: "8px",
+          }}
+        >
 
         <video
           ref={videoRef}
@@ -508,7 +508,7 @@ useEffect(() => {
           style={{
             width: "100%",
             height: "100%",
-            objectFit: "contain",
+            objectFit: "cover",
           }}
         />
 
