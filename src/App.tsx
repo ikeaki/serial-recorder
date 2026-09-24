@@ -505,18 +505,17 @@ useEffect(() => {
           style={{
             width: "100%",
             height: "250px",
-            objectFit: "contain"
+            objectFit: "fill",
           }}
         />
 
         <div
           style={{
             position: "absolute",
-            left: "50%",
-            top: "50%",
+            left: "25%",
+            top: "35%",
             width: "50%",
             height: "20%",
-            transform: "translate(-50%, -50%)",
             pointerEvents: "none",
           }}
         >
