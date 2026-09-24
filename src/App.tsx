@@ -18,6 +18,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [videoAspectRatio, setVideoAspectRatio] = useState(16 / 9);
 
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -492,7 +493,8 @@ useEffect(() => {
         style={{
           position: "relative",
           width: "100%",
-          height: "250px",
+          aspectRatio: videoAspectRatio,
+          overflow: "hidden",
         }}
       >
         <video
@@ -500,10 +502,17 @@ useEffect(() => {
           autoPlay
           playsInline
           muted
+          onLoadedMetadata={(event) => {
+            const { videoWidth, videoHeight } = event.currentTarget;
+
+            if (videoWidth && videoHeight) {
+              setVideoAspectRatio(videoWidth / videoHeight);
+            }
+          }}
           style={{
             width: "100%",
-            height: "250px",
-            objectFit: "fill",
+            height: "100%",
+            objectFit: "contain",
           }}
         />
 
