@@ -14,10 +14,11 @@ type HistoryItem = {
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [result, setResult] = useState("未読取");
+  const [result, setResult] = useState("Not Scanned");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const pressTimer = useRef<number | null>(null);
 
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -91,6 +92,11 @@ export default function App() {
     tx.objectStore(STORE_NAME).clear();
   };
 
+  const clearHistory = async () => {
+    setHistory([]);
+    await clearHistoryDB();
+  };
+  
   const existsRecord = async (
     code: string
   ): Promise<boolean> => {
@@ -263,7 +269,7 @@ useEffect(() => {
         playError();
         vibrateError();
         
-        setResult("⚠ 重複: " + text);
+        setResult("⚠ Duplicate: " + text);
         return;
       }
 
@@ -373,7 +379,7 @@ useEffect(() => {
       result.data.text.trim();
       
       if (!/^[0-9A-Z]+$/.test(text)) {
-      setResult("⚠ OCR認識失敗");
+      setResult("⚠ OCR Failed");
       return;
       }
 
@@ -383,7 +389,7 @@ useEffect(() => {
       if (exists) {
         playError();
         vibrateError();
-        setResult("⚠ 重複: " + text);
+        setResult("⚠ Duplicate: " + text);
         return;
       }
 
@@ -482,9 +488,9 @@ useEffect(() => {
   return (
     <div style={{ padding: 20 }}>
 
-      <h1>シリアル管理アプリ</h1>
+      <h1>Serial Manager</h1>
       <p>
-      対応:
+      Supported:
       QR Code / DataMatrix / Code128 /OCR
       </p>
 
@@ -581,19 +587,41 @@ useEffect(() => {
 
       <br />
 
-      <button
+      <div
         style={{
-          width: "100%",
-          height: "60px",
-          fontSize: "22px",
+          display: "flex",
+          gap: "10px",
+          marginTop: "10px",
         }}
-        disabled={scanning}
-        onClick={scanQr}
       >
-        {scanning ? "読取中..." : "QR読取"}
-      </button>
+        <button
+          style={{
+            flex: 1,
+            height: "60px",
+            fontSize: "20px",
+          }}
+          disabled={scanning}
+          onClick={scanQr}
+        >
+          {scanning ? "Scanning..." : "Scan QR/Barcode"}
+        </button>
 
-      <h2>最新読取</h2>
+        <button
+          style={{
+            flex: 1,
+            height: "60px",
+            fontSize: "20px",
+          }}
+          disabled={ocrLoading}
+          onClick={runOCR}
+        >
+          {ocrLoading
+            ? "Scanning..."
+            : "Scan OCR"}
+        </button>
+      </div>
+
+      <h2>Latest Scan</h2>
       <div
         style={{
           border: "1px solid #ccc",
@@ -605,40 +633,57 @@ useEffect(() => {
         {result}
       </div>
 
-      <button
-        onClick={runOCR}
-        disabled={ocrLoading}
+      <div
         style={{
-          width: "100%",
-          height: "50px",
-          marginTop: "10px"
+          display: "flex",
+          gap: "10px",
+          marginTop: "10px",
         }}
       >
-        {ocrLoading
-          ? "OCR認識中..."
-          : "OCR読取"}
-      </button>
+        <button
+          style={{
+            flex: 1,
+            height: "60px",
+            fontSize: "18px",
+          }}
+          onClick={exportExcel}
+        >
+          Export
+        </button>
 
-      <button
-        //onClick={exportCsv}
-        onClick={exportExcel}
-      >
-        出力
-      </button>
+        <button
+          style={{
+            flex: 1,
+            height: "60px",
+            fontSize: "18px",
+            backgroundColor: "#ccc",
+          }}
+          onPointerDown={() => {
+            pressTimer.current = window.setTimeout(
+              clearHistory,
+              1500
+            );
+          }}
+          onPointerUp={() => {
+            if (pressTimer.current) {
+              clearTimeout(pressTimer.current);
+            }
+          }}
+          onPointerLeave={() => {
+            if (pressTimer.current) {
+              clearTimeout(pressTimer.current);
+            }
+          }}
+        >
+          Hold to Clear
+        </button>
 
-      <button
-        onClick={async () => {
-          setHistory([]);
-          await clearHistoryDB();
-        }}
-      >
-        履歴クリア
-      </button>
+      </div>
 
-      <h2>履歴 ({history.length}件)</h2>
+      <h2>History ({history.length} items)</h2>
 
       {history.length === 0 ? (
-        <p>履歴なし</p>
+        <p>No history</p>
       ) : (
         <ul>
           {history.map((item, index) => (
