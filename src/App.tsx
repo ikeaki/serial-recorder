@@ -358,13 +358,13 @@ useEffect(() => {
         canvas.width * 0.25;
 
       const cropY =
-        canvas.height * 0.35;
+        canvas.height * 0.40;
 
       const cropW =
         canvas.width * 0.50;
 
       const cropH =
-        canvas.height * 0.20;
+        canvas.height * 0.10;
             
       const cropCanvas =
         document.createElement("canvas");
@@ -545,9 +545,9 @@ useEffect(() => {
           style={{
             position: "absolute",
             left: "25%",
-            top: "35%",
+            top: "45%",
             width: "50%",
-            height: "20%",
+            height: "10%",
             pointerEvents: "none",
           }}
         >
