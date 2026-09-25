@@ -18,6 +18,8 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [scanHeight, setScanHeight] = useState(15);
+  const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
@@ -227,9 +229,6 @@ export default function App() {
           },
         });
     
-        trackRef.current =
-        stream.getVideoTracks()[0];
-      
         const track =
           stream.getVideoTracks()[0];
 
@@ -238,7 +237,28 @@ export default function App() {
         console.log(
           track.getCapabilities()
         );
-        
+
+        try {
+
+          await track.applyConstraints({
+            advanced: [
+              {
+                focusMode: "continuous",
+              } as any,
+            ],
+          });
+
+          console.log(
+            "Auto Focus Enabled"
+          );
+
+        } catch (err) {
+
+          console.log(
+            "Auto Focus Not Supported"
+          );
+        }
+
         //alert("カメラ取得成功");
 
         if (videoRef.current) {
@@ -273,11 +293,71 @@ export default function App() {
     
     try {
 
-      const resultPromise =
-        reader.decodeOnceFromVideoDevice(
-          undefined,
-          videoRef.current!
-        );
+      const canvas =
+        document.createElement("canvas");
+
+      canvas.width =
+        videoRef.current!.videoWidth;
+
+      canvas.height =
+        videoRef.current!.videoHeight;
+
+      const ctx =
+        canvas.getContext("2d");
+
+      if (!ctx) return;
+
+      ctx.drawImage(
+        videoRef.current!,
+        0,
+        0
+      );      
+
+      const {
+        cropX,
+        cropY,
+        cropW,
+        cropH,
+      } = getScanArea(canvas);
+
+      const cropCanvas =
+        document.createElement("canvas");
+
+      cropCanvas.width = cropW * 2;
+      cropCanvas.height = cropH * 2;
+
+      const cropCtx =
+        cropCanvas.getContext("2d");
+
+      if (!cropCtx) return;
+
+      cropCtx.drawImage(
+        canvas,
+        cropX,
+        cropY,
+        cropW,
+        cropH,
+        0,
+        0,
+        cropW * 2,
+        cropH * 2
+      );
+
+
+      const image =
+        cropCanvas.toDataURL("image/png");
+
+      const img =
+        document.createElement("img");
+
+      img.src = image;
+
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+      });
+      
+    const resultPromise =
+    reader.decodeFromImageElement(img);
 
       const timeoutPromise =
         new Promise<never>((_, reject) =>
@@ -373,23 +453,19 @@ export default function App() {
         0,
         0
       );
-      const cropX =
-        canvas.width * 0.25;
 
-      const cropY =
-        canvas.height * 0.375;
-
-      const cropW =
-        canvas.width * 0.50;
-
-      const cropH =
-        canvas.height * 0.15;
+      const {
+        cropX,
+        cropY,
+        cropW,
+        cropH,
+      } = getScanArea(canvas);
             
       const cropCanvas =
         document.createElement("canvas");
 
-      cropCanvas.width = cropW;
-      cropCanvas.height = cropH;
+      cropCanvas.width = cropW * 2;
+      cropCanvas.height = cropH * 2;
 
       const cropCtx =
         cropCanvas.getContext("2d");
@@ -404,8 +480,8 @@ export default function App() {
         cropH,
         0,
         0,
-        cropW,
-        cropH
+        cropW * 2,
+        cropH * 2
       );
 
       const image =
@@ -569,6 +645,37 @@ export default function App() {
     }
   };
 
+  const scanTop = (100 - scanHeight) / 2;
+
+  const getScanArea = (
+    canvas: HTMLCanvasElement
+  ) => {
+
+    const cropX =
+      canvas.width *
+      ((100 - scanWidth) / 2 / 100);
+
+
+    const cropY =
+      canvas.height *
+      (scanTop / 100);
+
+    const cropW =
+      canvas.width *
+      (scanWidth / 100);
+
+
+    const cropH =
+      canvas.height *
+      (scanHeight / 100);
+
+    return {
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+    };
+};
 
   return (
     <div style={{ padding: 20 }}>
@@ -606,10 +713,34 @@ export default function App() {
         <div
           style={{
             position: "absolute",
-            left: "25%",
-            top: "37.5%",
-            width: "50%",
-            height: "15%",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: `${scanTop}%`,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            top: `${scanTop + scanHeight}%`,
+            left: 0,
+            width: "100%",
+            height: `${100 - scanTop - scanHeight}%`,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            left: `${(100 - scanWidth) / 2}%`,
+            top: `${scanTop}%`,
+            width: `${scanWidth}%`,
+            height: `${scanHeight}%`,
             pointerEvents: "none",
           }}
         >
@@ -670,31 +801,84 @@ export default function App() {
 
       </div>
 
-      <div
+        <div
         style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "10px",
-          marginTop: "10px",
-          userSelect: "none",
-          WebkitUserSelect: "none",
+        display: "flex",
+        gap: "10px",
+        marginTop: "10px",
+        width: "100%",
         }}
-      >
-        <button
-          onClick={() => changeZoom(-0.5)}
         >
-          −
-        </button>
-
-        <span>
-          Zoom {zoom.toFixed(1)}x
-        </span>
-
-        <button
-          onClick={() => changeZoom(0.5)}
+          
+        {/* Height */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            padding: "6px 10px",
+          }}
         >
-          ＋
-        </button>
+          <button
+            onClick={() =>
+              setScanHeight(
+                Math.max(5, scanHeight - 2)
+              )
+            }
+          >
+            −
+          </button>
+
+          <span>
+            Height: {scanHeight}%
+          </span>
+
+          <button
+            onClick={() =>
+              setScanHeight(
+                Math.min(60, scanHeight + 2)
+              )
+            }
+          >
+            ＋
+          </button>
+        </div>
+
+        {/* Zoom */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            padding: "6px 10px",
+          }}
+        >
+          <button
+            onClick={() =>
+              changeZoom(-0.5)
+            }
+          >
+            −
+          </button>
+
+          <span>
+            Zoom: {zoom.toFixed(1)}x
+          </span>
+
+          <button
+            onClick={() =>
+              changeZoom(0.5)
+            }
+          >
+            ＋
+          </button>
+        </div>
       </div>
 
 
