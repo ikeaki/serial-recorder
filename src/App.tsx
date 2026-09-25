@@ -18,6 +18,8 @@ export default function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
 
   const openDB = (): Promise<IDBDatabase> => {
@@ -212,41 +214,46 @@ export default function App() {
     URL.revokeObjectURL(url);
   };*/
 
-useEffect(() => {
-  async function startCamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: {
-            ideal: "environment",
-          },
-        },
-      });
   
 
-      //alert("カメラ取得成功");
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      } catch (err) {
-      //  alert("失敗: " + String(err));
-      console.error(err);
+  useEffect(() => {
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: {
+              ideal: "environment",
+            },
+          },
+        });
     
+        trackRef.current =
+        stream.getVideoTracks()[0];
+      
+
+        //alert("カメラ取得成功");
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        } catch (err) {
+        //  alert("失敗: " + String(err));
+        console.error(err);
+      
+      }
     }
-  }
 
-  startCamera();
-}, []);
+    startCamera();
+  }, []);
 
-useEffect(() => {
-  loadHistory()
-    .then(data => {
-      setHistory(
-        [...data].reverse()
-      );
-    });
-}, []);
+  useEffect(() => {
+    loadHistory()
+      .then(data => {
+        setHistory(
+          [...data].reverse()
+        );
+      });
+  }, []);
 
   const scanQr = async () => {
     if (scanning) {
@@ -449,6 +456,49 @@ useEffect(() => {
     }
   };
 
+  const changeZoom = async (
+    delta: number
+  ) => {
+
+    const track =
+      trackRef.current;
+
+    if (!track) return;
+
+    try {
+
+      const capabilities =
+        track.getCapabilities() as any;
+
+      if (!capabilities.zoom) {
+        setResult("Zoom Not Supported");
+        return;
+      }
+
+      const newZoom =
+        Math.max(
+          capabilities.zoom.min,
+          Math.min(
+            capabilities.zoom.max,
+            zoom + delta
+          )
+        );
+
+      await track.applyConstraints({
+        advanced: [
+          {
+            zoom: newZoom,
+          } as any,
+        ],
+      });
+
+      setZoom(newZoom);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+    
   const playSuccess = () => {
     const audioContext = new AudioContext();
 
@@ -611,6 +661,34 @@ useEffect(() => {
         </div>
 
       </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "10px",
+          marginTop: "10px",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+        }}
+      >
+        <button
+          onClick={() => changeZoom(-0.5)}
+        >
+          −
+        </button>
+
+        <span>
+          Zoom {zoom.toFixed(1)}x
+        </span>
+
+        <button
+          onClick={() => changeZoom(0.5)}
+        >
+          ＋
+        </button>
+      </div>
+
 
       <br />
 
