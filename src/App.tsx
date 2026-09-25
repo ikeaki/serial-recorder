@@ -626,6 +626,8 @@ useEffect(() => {
             flex: 1,
             height: "60px",
             fontSize: "20px",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
           disabled={scanning}
           onClick={scanQr}
@@ -638,6 +640,8 @@ useEffect(() => {
             flex: 1,
             height: "60px",
             fontSize: "20px",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
           disabled={ocrLoading}
           onClick={runOCR}
@@ -672,6 +676,8 @@ useEffect(() => {
             flex: 1,
             height: "60px",
             fontSize: "18px",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
           onClick={exportExcel}
         >
@@ -684,6 +690,8 @@ useEffect(() => {
             height: "60px",
             fontSize: "18px",
             backgroundColor: "#ccc",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
           onPointerDown={() => {
             pressTimer.current = window.setTimeout(
