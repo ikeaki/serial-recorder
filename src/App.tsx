@@ -93,6 +93,10 @@ export default function App() {
   };
 
   const clearHistory = async () => {
+
+    playError();
+    vibrateError();
+
     setHistory([]);
     await clearHistoryDB();
   };
@@ -358,13 +362,13 @@ useEffect(() => {
         canvas.width * 0.25;
 
       const cropY =
-        canvas.height * 0.40;
+        canvas.height * 0.375;
 
       const cropW =
         canvas.width * 0.50;
 
       const cropH =
-        canvas.height * 0.10;
+        canvas.height * 0.15;
             
       const cropCanvas =
         document.createElement("canvas");
@@ -545,9 +549,9 @@ useEffect(() => {
           style={{
             position: "absolute",
             left: "25%",
-            top: "45%",
+            top: "37.5%",
             width: "50%",
-            height: "10%",
+            height: "15%",
             pointerEvents: "none",
           }}
         >
