@@ -230,7 +230,15 @@ export default function App() {
         trackRef.current =
         stream.getVideoTracks()[0];
       
+        const track =
+          stream.getVideoTracks()[0];
 
+        trackRef.current = track;
+
+        console.log(
+          track.getCapabilities()
+        );
+        
         //alert("カメラ取得成功");
 
         if (videoRef.current) {
