@@ -249,15 +249,30 @@ useEffect(() => {
       return;
     }
     setScanning(true);
+
+    const reader = new BrowserMultiFormatReader();
     
     try {
-      const reader = new BrowserMultiFormatReader();
 
-      const result = await reader.decodeOnceFromVideoDevice(
-        undefined,
-        videoRef.current!
-      );
+      const resultPromise =
+        reader.decodeOnceFromVideoDevice(
+          undefined,
+          videoRef.current!
+        );
 
+      const timeoutPromise =
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("timeout")),
+            2000
+          )
+        );
+
+      const result = await Promise.race([
+        resultPromise,
+        timeoutPromise,
+      ])as Awaited<typeof resultPromise>;
+      
       const text = result.getText().trim();
 
       setResult(text);
@@ -296,9 +311,17 @@ useEffect(() => {
       });
       
     } catch (err) {
+
+      if (
+        err instanceof Error &&
+        err.message === "timeout"
+      ) {
+        setResult("Scan Timeout");
+        return;
+      }
+
       console.error(err);
     }
-
     finally {
       setScanning(false);
     }
