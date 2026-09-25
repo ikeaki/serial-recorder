@@ -484,6 +484,41 @@ export default function App() {
         cropH * 2
       );
 
+      const imageData = cropCtx.getImageData(
+        0,
+        0,
+        cropCanvas.width,
+        cropCanvas.height
+      );
+
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+
+        const gray =
+          data[i] * 0.299 +
+          data[i + 1] * 0.587 +
+          data[i + 2] * 0.114;
+
+        const value =
+          gray > 160 ? 255 : 0;
+
+        data[i] = value;
+        data[i + 1] = value;
+        data[i + 2] = value;
+      }
+
+      cropCtx.putImageData(
+        imageData,
+        0,
+        0
+      );
+
+      // デバッグ用
+      document.body.appendChild(
+      cropCanvas
+      );
+
       const image =
         cropCanvas.toDataURL("image/png");
 
