@@ -514,11 +514,15 @@ export default function App() {
         0
       );
 
-      // デバッグ用
-      document.body.appendChild(
-      cropCanvas
-      );
+      cropCanvas.id = "debugCanvas";
 
+      document
+        .getElementById("debugCanvas")
+        ?.remove();
+
+      document.body.appendChild(
+        cropCanvas
+      );
       const image =
         cropCanvas.toDataURL("image/png");
 
