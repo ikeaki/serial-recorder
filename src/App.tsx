@@ -461,14 +461,22 @@ export default function App() {
         cropH,
       } = getScanArea(canvas);
 
+      /*
+      const ocrCropY =
+        cropY + cropH * 0.25;
+
+      const ocrCropH =
+        cropH * 0.50;
+*/
+
       ctx.strokeStyle = "red";
       ctx.lineWidth = 5;
       
       ctx.strokeRect(
-      cropX,
-      cropY,
-      cropW,
-      cropH
+        cropX,
+        cropY,
+        cropW,
+        cropH,
       );
       
       canvas.style.width = "100%";
@@ -481,17 +489,13 @@ export default function App() {
       document.body.appendChild(canvas);
 
 
-      const ocrCropY =
-      cropY + cropH * 0.25;
 
-      const ocrCropH =
-        cropH * 0.50;
             
       const cropCanvas =
         document.createElement("canvas");
 
       cropCanvas.width = cropW * 2;
-      cropCanvas.height = ocrCropH * 2;
+      cropCanvas.height = cropH * 2;
 
       const cropCtx =
         cropCanvas.getContext("2d");
@@ -501,13 +505,13 @@ export default function App() {
       cropCtx.drawImage(
         canvas,
         cropX,
-        ocrCropY,
+        cropY,
         cropW,
-        ocrCropH,
+        cropH,
         0,
         0,
         cropW * 2,
-        ocrCropH * 2
+        cropH * 2
       );
 
       const imageData = cropCtx.getImageData(
