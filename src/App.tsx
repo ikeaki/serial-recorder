@@ -497,6 +497,14 @@ export default function App() {
       cropCanvas.width = cropW * 2;
       cropCanvas.height = cropH * 2;
 
+      console.log({
+        cropW,
+        cropH,
+        canvasW: cropCanvas.width,
+        canvasH: cropCanvas.height,
+      });
+
+
       const cropCtx =
         cropCanvas.getContext("2d");
 
@@ -550,6 +558,8 @@ export default function App() {
         .getElementById("debugCanvas")
         ?.remove();
 
+      cropCanvas.style.height = "auto";
+      cropCanvas.style.objectFit = "contain";
       cropCanvas.style.width = "100%";
       cropCanvas.style.maxWidth = "450px";
       cropCanvas.style.border = "2px solid red";
@@ -557,6 +567,7 @@ export default function App() {
       document.body.appendChild(
         cropCanvas
       );
+
       const image =
         cropCanvas.toDataURL("image/png");
 
