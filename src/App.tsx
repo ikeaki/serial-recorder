@@ -460,12 +460,38 @@ export default function App() {
         cropW,
         cropH,
       } = getScanArea(canvas);
+
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 5;
+      
+      ctx.strokeRect(
+      cropX,
+      cropY,
+      cropW,
+      cropH
+      );
+      
+      canvas.style.width = "100%";
+      canvas.style.maxWidth = "450px";
+      canvas.style.border = "2px solid blue";
+
+      document.getElementById("debugFull")?.remove();
+      canvas.id = "debugFull";
+
+      document.body.appendChild(canvas);
+
+
+      const ocrCropY =
+      cropY + cropH * 0.25;
+
+      const ocrCropH =
+        cropH * 0.50;
             
       const cropCanvas =
         document.createElement("canvas");
 
       cropCanvas.width = cropW * 2;
-      cropCanvas.height = cropH * 2;
+      cropCanvas.height = ocrCropH * 2;
 
       const cropCtx =
         cropCanvas.getContext("2d");
@@ -475,13 +501,13 @@ export default function App() {
       cropCtx.drawImage(
         canvas,
         cropX,
-        cropY,
+        ocrCropY,
         cropW,
-        cropH,
+        ocrCropH,
         0,
         0,
         cropW * 2,
-        cropH * 2
+        ocrCropH * 2
       );
 
       const imageData = cropCtx.getImageData(
@@ -519,6 +545,10 @@ export default function App() {
       document
         .getElementById("debugCanvas")
         ?.remove();
+
+      cropCanvas.style.width = "100%";
+      cropCanvas.style.maxWidth = "450px";
+      cropCanvas.style.border = "2px solid red";
 
       document.body.appendChild(
         cropCanvas
