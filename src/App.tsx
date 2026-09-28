@@ -597,14 +597,6 @@ export default function App() {
         drawHeight
       );
 
-      /*
-      const ocrCropY =
-        cropY + cropH * 0.25;
-
-      const ocrCropH =
-        cropH * 0.50;
-*/
-
       ctx.strokeStyle = "red";
       ctx.lineWidth = 5;
       
@@ -624,14 +616,11 @@ export default function App() {
 
       document.body.appendChild(canvas);
 
-
-
-            
       const cropCanvas =
         document.createElement("canvas");
 
-      cropCanvas.width = cropW * 2;
-      cropCanvas.height = cropH * 2;
+      cropCanvas.width = cropW * 4;
+      cropCanvas.height = cropH * 4;
 
       console.log({
         cropW,
@@ -654,39 +643,136 @@ export default function App() {
         cropH,
         0,
         0,
-        cropW * 2,
-        cropH * 2
+        cropW * 4,
+        cropH * 4
       );
 
-      const imageData = cropCtx.getImageData(
-        0,
-        0,
-        cropCanvas.width,
-        cropCanvas.height
-      );
+      const thresholds = [
+        120,
+        140,
+        160,
+        180,
+        200,
+      ];
 
-      const data = imageData.data;
+      let bestText = "";
+      let bestConfidence = 0;
 
-      for (let i = 0; i < data.length; i += 4) {
 
-        const gray =
-          data[i] * 0.299 +
-          data[i + 1] * 0.587 +
-          data[i + 2] * 0.114;
+      for (const threshold of thresholds) {
 
-        const value =
-          gray > 160 ? 255 : 0;
+        const workCanvas =
+          document.createElement("canvas");
 
-        data[i] = value;
-        data[i + 1] = value;
-        data[i + 2] = value;
+        workCanvas.width =
+          cropCanvas.width;
+
+        workCanvas.height =
+          cropCanvas.height;
+
+        const workCtx =
+          workCanvas.getContext("2d");
+
+        if (!workCtx) continue;
+
+        workCtx.drawImage(
+          cropCanvas,
+          0,
+          0
+        );
+
+        const imageData =
+          workCtx.getImageData(
+            0,
+            0,
+            workCanvas.width,
+            workCanvas.height
+          );
+
+        const data =
+          imageData.data;
+
+        for (
+          let i = 0;
+          i < data.length;
+          i += 4
+        ) {
+
+          const gray =
+            data[i] * 0.299 +
+            data[i + 1] * 0.587 +
+            data[i + 2] * 0.114;
+
+          const value =
+            gray > threshold
+              ? 255
+              : 0;
+
+          data[i] = value;
+          data[i + 1] = value;
+          data[i + 2] = value;
+        }
+
+        workCtx.putImageData(
+          imageData,
+          0,
+          0
+        );
+
+        const image =
+          workCanvas.toDataURL(
+            "image/png"
+          );
+
+        const result =
+          await Tesseract.recognize(
+            image,
+            "eng",
+            {
+              tessedit_char_whitelist:
+              "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            } as any
+          );
+
+        const text =
+          result.data.text
+            .trim()
+            .replace(/\s/g, "");
+
+        const confidence =
+          result.data.confidence;
+
+        console.log({
+          threshold,
+          text,
+          confidence,
+        });
+         
+        if (
+          text.length > 0 &&
+          confidence > bestConfidence
+        ) {
+
+          bestConfidence =
+            confidence;
+
+          bestText =
+            text;
+        }
+
+        console.log(
+          "OCR threshold:",
+          threshold
+          );
+
       }
-
-      cropCtx.putImageData(
-        imageData,
-        0,
-        0
-      );
+          
+      console.log(
+        bestText,
+        bestConfidence
+        );
+      const text = bestText;
+    
 
       cropCanvas.id = "debugCanvas";
 
@@ -703,22 +789,13 @@ export default function App() {
       document.body.appendChild(
         cropCanvas
       );
-
-      const image =
-        cropCanvas.toDataURL("image/png");
-
-      const result =
-        await Tesseract.recognize(
-          image,
-          "eng"
-        );
-
-      const text =
-      result.data.text.trim();
       
-      if (!/^[0-9A-Z]+$/.test(text)) {
-      setResult("⚠ OCR Failed");
-      return;
+      if (
+        text.length === 0 ||
+        !/^[0-9A-Z]+$/.test(text)
+      ) {
+        setResult("⚠ OCR Failed");
+        return;
       }
 
       const exists =
