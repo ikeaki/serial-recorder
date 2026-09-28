@@ -323,67 +323,12 @@ export default function App() {
 
         if (ctx) {
 
-          let drawHeight = canvas.height;
-
-          if (isMobile) {
-
-            const srcY =
-              video.videoHeight * cropTopRate;
-
-            const srcH =
-              video.videoHeight *
-              (1 - cropTopRate - cropBottomRate);
-
-            // 縦横比維持
-            drawHeight =
-              canvas.width *
-              (srcH / video.videoWidth);
-
-            // キャンバス高さを変更
-            canvas.height = drawHeight;
-
-            ctx.clearRect(
-              0,
-              0,
-              canvas.width,
-              canvas.height
+          const drawHeight =
+            drawCameraFrame(
+              ctx,
+              canvas,
+              video
             );
-
-            ctx.drawImage(
-              video,
-              0,                  // srcX
-              srcY,               // srcY
-              video.videoWidth,   // srcW
-              srcH,               // srcH
-              0,                  // dstX
-              0,                  // dstY
-              canvas.width,       // dstW
-              drawHeight          // dstH
-            );
-
-          } else {
-
-            canvas.height =
-              video.videoHeight;
-
-            drawHeight =
-              canvas.height;
-
-            ctx.clearRect(
-              0,
-              0,
-              canvas.width,
-              canvas.height
-            );
-
-            ctx.drawImage(
-              video,
-              0,
-              0,
-              canvas.width,
-              canvas.height
-            );
-          }
 
           const {
             cropX,
@@ -445,18 +390,22 @@ export default function App() {
 
       if (!ctx) return;
 
-      ctx.drawImage(
-        videoRef.current!,
-        0,
-        0
-      );      
+      const drawHeight =
+        drawCameraFrame(
+          ctx,
+          canvas,
+          videoRef.current!
+        );
 
       const {
         cropX,
         cropY,
         cropW,
         cropH,
-      } = getScanArea(canvas);
+      } = getScanAreaWH(
+        canvas.width,
+        drawHeight
+      );
 
       const cropCanvas =
         document.createElement("canvas");
@@ -587,18 +536,22 @@ export default function App() {
 
       if (!ctx) return;
 
-      ctx.drawImage(
-        videoRef.current,
-        0,
-        0
-      );
+      const drawHeight =
+        drawCameraFrame(
+        ctx,
+        canvas,
+        videoRef.current
+        );
 
       const {
         cropX,
         cropY,
         cropW,
         cropH,
-      } = getScanArea(canvas);
+      } = getScanAreaWH(
+        canvas.width,
+        drawHeight
+      );
 
       /*
       const ocrCropY =
@@ -867,33 +820,71 @@ export default function App() {
       navigator.vibrate([400,100,100]);
     }
   };
-
-
-  const getScanArea = (
-    canvas: HTMLCanvasElement
+  
+  const drawCameraFrame = (
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement,
+    video: HTMLVideoElement
   ) => {
 
-    const cropW =
-     canvas.width *
-     (scanWidth / 100);
+    if (isMobile) {
 
-    const cropH =
-      canvas.height *
-      (scanHeight / 100);
+      const srcY =
+        video.videoHeight * cropTopRate;
 
-    const cropX =
-      (canvas.width - cropW) / 2;
+      const srcH =
+        video.videoHeight *
+        (1 - cropTopRate - cropBottomRate);
 
-    const cropY =
-     (canvas.height - cropH) / 2;
+      const drawHeight =
+        canvas.width *
+        (srcH / video.videoWidth);
 
-    return {
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-    };
-};
+      canvas.height = drawHeight;
+      
+      ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      ctx.drawImage(
+        video,
+        0,
+        srcY,
+        video.videoWidth,
+        srcH,
+        0,
+        0,
+        canvas.width,
+        drawHeight
+      );
+
+      return drawHeight;
+
+    }
+
+    canvas.height =
+      video.videoHeight;
+
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    ctx.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    return canvas.height;
+  };
 
   const getScanAreaWH = (
     width: number,
