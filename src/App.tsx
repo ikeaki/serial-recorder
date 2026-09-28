@@ -771,11 +771,18 @@ export default function App() {
 
       }
           
-      console.log(
-        bestText,
-        bestConfidence
-        );
-      const text = bestText;
+      const rawText = bestText;
+      
+      const text =
+      rawText
+      .replace(/O/g, "0")
+      .replace(/I/g, "1");
+      
+      console.log({
+      rawText,
+      text,
+      bestConfidence,
+      });
     
 
       cropCanvas.id = "debugCanvas";
