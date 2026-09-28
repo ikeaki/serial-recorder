@@ -813,29 +813,24 @@ export default function App() {
     }
   };
 
-  const scanTop = (100 - scanHeight) / 2;
 
   const getScanArea = (
     canvas: HTMLCanvasElement
   ) => {
 
-    const cropX =
-      canvas.width *
-      ((100 - scanWidth) / 2 / 100);
-
-
-    const cropY =
-      canvas.height *
-      (scanTop / 100);
-
     const cropW =
-      canvas.width *
-      (scanWidth / 100);
-
+     canvas.width *
+     (scanWidth / 100);
 
     const cropH =
       canvas.height *
       (scanHeight / 100);
+
+    const cropX =
+      (canvas.width - cropW) / 2;
+
+    const cropY =
+     (canvas.height - cropH) / 2;
 
     return {
       cropX,
