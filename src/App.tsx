@@ -619,8 +619,8 @@ export default function App() {
       const cropCanvas =
         document.createElement("canvas");
 
-      cropCanvas.width = cropW * 2;
-      cropCanvas.height = cropH * 2;
+      cropCanvas.width = cropW * 4;
+      cropCanvas.height = cropH * 4;
 
       console.log({
         cropW,
@@ -643,8 +643,8 @@ export default function App() {
         cropH,
         0,
         0,
-        cropW * 2,
-        cropH * 2
+        cropW * 4,
+        cropH * 4
       );
 
       const thresholds = [
@@ -757,12 +757,7 @@ export default function App() {
         bestText = text;
         }
 
-        if (bestConfidence < 50) {
-        setResult(
-        `⚠ OCR Failed (${bestConfidence.toFixed(0)}%)`
-        );
-        return;
-        }
+
 
         console.log(
           "OCR threshold:",
@@ -770,7 +765,14 @@ export default function App() {
           );
 
       }
-          
+      
+      if (bestConfidence < 50) {
+        setResult(
+        `⚠ OCR Failed (${bestConfidence.toFixed(0)}%)`
+        );
+        return;
+      }
+
       const rawText = bestText;
       
       const text =
@@ -838,7 +840,7 @@ export default function App() {
       vibrateSuccess();
 
       setResult(
-        "OCR: " + text
+        `OCR: ${text} (${bestConfidence.toFixed(0)}%)`
       );
 
     } finally {
