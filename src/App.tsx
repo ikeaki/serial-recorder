@@ -225,9 +225,31 @@ export default function App() {
       }
     };
 
-  reader.readAsText(file);
-};
+    reader.readAsText(file);
+  };
 
+  useEffect(() => {
+
+    fetch("/config/default.json")
+      .then(res => res.json())
+      .then(config => {
+
+        setModelName(
+          config.model ?? "None"
+        );
+
+        setItems(
+          config.items ?? []
+        );
+
+        setCurrentIndex(0);
+
+        setResults({});
+
+      })
+      .catch(console.error);
+
+  }, []);  
   
   useEffect(() => {
     async function startCamera() {
@@ -1512,12 +1534,8 @@ export default function App() {
         </button>
       </div>
 
-
-
     </>
     )}
-
-
     
     </div>
   );
