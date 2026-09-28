@@ -5,11 +5,17 @@ import Tesseract from "tesseract.js";
 
 const DB_NAME = "serial-db";
 const STORE_NAME = "history";
+const PROD_STORE_NAME = "production";
 
 type HistoryItem = {
   id?: number;
   code: string;
   time: string;
+};
+
+type ScanItem = {
+  name: string;
+  type: "QR" | "OCR";
 };
 
 export default function App() {
@@ -24,10 +30,11 @@ export default function App() {
   const [modelName, setModelName] = useState("None");
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [items, setItems] = useState<ScanItem[]>([]);
 
-  const [items, setItems] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const [completedUnits, setCompletedUnits] = useState<any[]>([]); 
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
@@ -38,17 +45,36 @@ export default function App() {
 
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
+      const request = indexedDB.open(DB_NAME, 2);
 
       request.onupgradeneeded = () => {
+
         const db = request.result;
 
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, {
-            keyPath: "id",
-            autoIncrement: true,
-          });
+          db.createObjectStore(
+            STORE_NAME,
+            {
+              keyPath: "id",
+              autoIncrement: true,
+            }
+          );
         }
+
+        if (
+          !db.objectStoreNames.contains(
+            PROD_STORE_NAME
+          )
+        ) {
+          db.createObjectStore(
+            PROD_STORE_NAME,
+            {
+              keyPath: "id",
+              autoIncrement: true,
+            }
+          );
+        }
+
       };
 
       request.onsuccess = () => {
@@ -76,6 +102,30 @@ export default function App() {
     });
   };
 
+  const saveProductionRecord = async (
+    data: any
+  ) => {
+
+    const db = await openDB();
+
+    const tx =
+      db.transaction(
+        PROD_STORE_NAME,
+        "readwrite"
+      );
+
+    tx.objectStore(
+      PROD_STORE_NAME
+    ).add(data);
+
+    console.log(
+      "Production Saved",
+      data
+    );
+
+  };
+  
+
   const loadHistory = async () => {
     const db = await openDB();
 
@@ -95,6 +145,37 @@ export default function App() {
 
         request.onerror =
           () => reject(request.error);
+      }
+    );
+  };
+
+  const loadProductionHistory =
+    async () => {
+
+    const db = await openDB();
+
+    const tx =
+      db.transaction(
+        PROD_STORE_NAME,
+        "readonly"
+      );
+
+    const request =
+      tx
+        .objectStore(
+          PROD_STORE_NAME
+        )
+        .getAll();
+
+    return await new Promise<any[]>(
+      (resolve, reject) => {
+
+        request.onsuccess =
+          () => resolve(request.result);
+
+        request.onerror =
+          () => reject(request.error);
+
       }
     );
   };
@@ -190,6 +271,48 @@ export default function App() {
     );
   };
 
+  const exportProductionExcel = () => {
+
+    if (completedUnits.length === 0) {
+      alert("No Production Data");
+      return;
+    }
+
+    const worksheet =
+      XLSX.utils.json_to_sheet(
+        completedUnits
+      );
+
+    const workbook =
+      XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Production"
+    );
+
+    const now = new Date();
+
+    const fileName =
+      `production-${
+        now.getFullYear()
+      }${
+        String(now.getMonth() + 1).padStart(2, "0")
+      }${
+        String(now.getDate()).padStart(2, "0")
+      }-${
+        String(now.getHours()).padStart(2, "0")
+      }${
+        String(now.getMinutes()).padStart(2, "0")
+      }.xlsx`;
+
+    XLSX.writeFile(
+      workbook,
+      fileName
+    );
+  };
+  
   const loadConfig = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -344,6 +467,19 @@ export default function App() {
         );
       });
   }, []);
+
+  useEffect(() => {
+
+    loadProductionHistory()
+      .then(data => {
+
+        setCompletedUnits(
+          [...data].reverse()
+        );
+
+      });
+
+  }, []);  
 
   useEffect(() => {
     let animationId: number;
@@ -567,12 +703,21 @@ export default function App() {
       ) {
 
         const itemName =
-          items[currentIndex];
+          items[currentIndex].name;
 
-        setResults(prev => ({
-          ...prev,
-          [itemName]: text
-        }));
+        const newResults = {
+          ...results,
+          [itemName]: text,
+        };
+
+        setResults(newResults);
+        
+        await saveProductionRecord({
+          model: modelName,
+          ...newResults,
+          updateTime:
+        new Date().toLocaleString(),
+        });
 
         setCurrentIndex(prev =>
           Math.min(
@@ -903,12 +1048,21 @@ export default function App() {
       ) {
 
         const itemName =
-          items[currentIndex];
+          items[currentIndex].name;
 
-        setResults(prev => ({
-        ...prev,
-        [itemName]: text,
-        }));
+        const newResults = {
+          ...results,
+          [itemName]: text,
+        };
+
+        setResults(newResults);
+        
+        await saveProductionRecord({
+          model: modelName,
+          ...newResults,
+          updateTime:
+        new Date().toLocaleString(),
+        });
 
         setCurrentIndex(prev =>
           Math.min(
@@ -1293,13 +1447,6 @@ export default function App() {
         </div>
       </div>
 
-    {tab === "eval" && (
-    <>
-
-
-
-      <br />
-
       <div
         style={{
           display: "flex",
@@ -1337,6 +1484,13 @@ export default function App() {
             : "Scan OCR"}
         </button>
       </div>
+
+
+    {tab === "eval" && (
+    <>
+      <br />
+
+
 
       <h2>Latest Scan</h2>
       <div
@@ -1438,7 +1592,6 @@ export default function App() {
         }}
       >
 
-        
         <button
           style={{
             flex: 1,
@@ -1498,41 +1651,77 @@ export default function App() {
         {
         currentIndex >= items.length
         ? "COMPLETE"
-        : items[currentIndex]
+        : items[currentIndex]?.name
         }
         </div>
 
-        <div style={{ marginTop: "20px" }}>
-          {items.map(item => (
-            <div key={item}>
-              {item}: {results[item] ?? "---"}
-            </div>
-          ))}
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: "10px",
+            color: "#666",
+          }}
+        >
+          Type: {items[currentIndex]?.type ?? "-"}
         </div>
-      </div>
 
-      <div
-        style={{
-          marginTop: "20px",
-        }}
-      >
-        <button
+        <table
           style={{
             width: "100%",
-            height: "60px",
-            fontSize: "20px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
+            marginTop: "20px",
+            borderCollapse: "collapse",
           }}
-          disabled={
-          scanning ||
-          currentIndex >= items.length
-          }
-          onClick={scanQr}
         >
-          {scanning ? "Scanning..." : "Scan"}
-        </button>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {items.map(item => (
+              <tr key={item.name}>
+                <td>{item.name}</td>
+
+                <td>
+                  <input
+                    value={results[item.name] ?? ""}
+                    onChange={e =>
+                      setResults(prev => ({
+                        ...prev,
+                        [item.name]: e.target.value,
+                      }))
+                    }
+
+                    onBlur={async () => {
+
+                      await saveProductionRecord({
+                        model: modelName,
+                        ...results,
+                        updateTime:
+                          new Date().toLocaleString(),
+                      });
+
+                    }}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <button
+      style={{
+      width: "100%",
+      height: "50px",
+      marginBottom: "10px",
+      }}
+      onClick={exportProductionExcel}
+      >
+      Export Production Data
+      </button>
 
     </>
     )}

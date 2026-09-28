@@ -1,8 +1,17 @@
 {
-"model": "ABC1000",
-"items": [
-"INV1",
-"INV2",
-"SN"
-]
+  "model": "ABC1000",
+  "items": [
+    {
+      "name": "INV1",
+      "type": "OCR"
+    },
+    {
+      "name": "INV2",
+      "type": "QR"
+    },
+    {
+      "name": "X AMP",
+      "type": "OCR"
+    }
+  ]
 }
