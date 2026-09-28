@@ -14,11 +14,12 @@ type HistoryItem = {
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const [result, setResult] = useState("Not Scanned");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
-  const [scanHeight, setScanHeight] = useState(15);
+  const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const trackRef = useRef<MediaStreamTrack | null>(null);
@@ -263,6 +264,28 @@ export default function App() {
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+
+          videoRef.current.onloadedmetadata = () => {
+
+            const canvas =
+              previewCanvasRef.current;
+
+            if (canvas) {
+              canvas.width =
+                videoRef.current!.videoWidth;
+
+              canvas.height =
+                videoRef.current!.videoHeight;
+
+              console.log({
+                videoW: videoRef.current!.videoWidth,
+                videoH: videoRef.current!.videoHeight,
+                canvasW: canvas.width,
+                canvasH: canvas.height,
+              });
+            }
+
+          };
         }
         } catch (err) {
         //  alert("失敗: " + String(err));
@@ -283,6 +306,65 @@ export default function App() {
       });
   }, []);
 
+  useEffect(() => {
+    let animationId: number;
+
+    const draw = () => {
+
+      const video =
+        videoRef.current;
+
+      const canvas =
+        previewCanvasRef.current;
+
+      if (video && canvas && video.videoWidth) {
+
+        const ctx =
+          canvas.getContext("2d");
+
+        if (ctx) {
+
+          ctx.drawImage(
+            video,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+
+          const {
+            cropX,
+            cropY,
+            cropW,
+            cropH,
+          } = getScanArea(canvas);
+
+          ctx.strokeStyle = "red";
+          ctx.lineWidth = 6;
+
+          ctx.strokeRect(
+            cropX,
+            cropY,
+            cropW,
+            cropH
+          );
+        }
+      }
+
+      animationId =
+        requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () =>
+      cancelAnimationFrame(
+        animationId
+      );
+
+}, [scanHeight, scanWidth]);
+
+  
   const scanQr = async () => {
     if (scanning) {
       return;
@@ -442,6 +524,7 @@ export default function App() {
 
       canvas.height =
         videoRef.current.videoHeight;
+
 
       const ctx =
         canvas.getContext("2d");
@@ -775,7 +858,6 @@ export default function App() {
             position: "relative",
             width: "100%",
             maxWidth: "450px",
-            height: "280px",
             margin: "0 auto",
             overflow: "hidden",
             borderRadius: "8px",
@@ -787,102 +869,20 @@ export default function App() {
           autoPlay
           playsInline
           muted
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
+          style={{ 
+            display: "none" 
+
           }}
         />
 
-        <div
+        <canvas
+          ref={previewCanvasRef}
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
             width: "100%",
-            height: `${scanTop}%`,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            pointerEvents: "none",
+            height: "auto",
+            display: "block",
           }}
         />
-
-        <div
-          style={{
-            position: "absolute",
-            top: `${scanTop + scanHeight}%`,
-            left: 0,
-            width: "100%",
-            height: `${100 - scanTop - scanHeight}%`,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            pointerEvents: "none",
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            left: `${(100 - scanWidth) / 2}%`,
-            top: `${scanTop}%`,
-            width: `${scanWidth}%`,
-            height: `${scanHeight}%`,
-            pointerEvents: "none",
-          }}
-        >
-
-          {/* 左上 */}
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "20px",
-              height: "20px",
-              borderTop: "4px solid gray",
-              borderLeft: "4px solid gray",
-            }}
-          />
-
-          {/* 右上 */}
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              width: "20px",
-              height: "20px",
-              borderTop: "4px solid gray",
-              borderRight: "4px solid gray",
-            }}
-          />
-
-          {/* 左下 */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              width: "20px",
-              height: "20px",
-              borderBottom: "4px solid gray",
-              borderLeft: "4px solid gray",
-            }}
-          />
-
-          {/* 右下 */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: "20px",
-              height: "20px",
-              borderBottom: "4px solid gray",
-              borderRight: "4px solid gray",
-            }}
-          />
-
-        </div>
-
       </div>
 
         <div
@@ -909,7 +909,7 @@ export default function App() {
           <button
             onClick={() =>
               setScanHeight(
-                Math.max(5, scanHeight - 2)
+                Math.max(5, scanHeight - 5)
               )
             }
           >
@@ -923,7 +923,7 @@ export default function App() {
           <button
             onClick={() =>
               setScanHeight(
-                Math.min(60, scanHeight + 2)
+                Math.min(60, scanHeight + 5)
               )
             }
           >
