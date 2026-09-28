@@ -619,8 +619,8 @@ export default function App() {
       const cropCanvas =
         document.createElement("canvas");
 
-      cropCanvas.width = cropW * 4;
-      cropCanvas.height = cropH * 4;
+      cropCanvas.width = cropW * 2;
+      cropCanvas.height = cropH * 2;
 
       console.log({
         cropW,
@@ -643,8 +643,8 @@ export default function App() {
         cropH,
         0,
         0,
-        cropW * 4,
-        cropH * 4
+        cropW * 2,
+        cropH * 2
       );
 
       const thresholds = [
