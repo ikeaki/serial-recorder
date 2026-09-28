@@ -340,15 +340,59 @@ export default function App() {
             drawHeight
           );
 
-          ctx.strokeStyle = "red";
-          ctx.lineWidth = 6;
+          // 上半分を暗くする
+          ctx.fillStyle =
+            "rgba(0,0,0,0.45)";
 
-          ctx.strokeRect(
-            cropX,
-            cropY,
-            cropW,
-            cropH
+          ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            cropY
           );
+
+          // 下半分を暗くする
+          ctx.fillRect(
+            0,
+            cropY + cropH,
+            canvas.width,
+            canvas.height -
+              (cropY + cropH)
+          );
+
+          // スキャン枠
+          const corner = 25;
+
+          ctx.strokeStyle = "white";
+          ctx.lineWidth = 4;
+
+          // 左上
+          ctx.beginPath();
+          ctx.moveTo(cropX, cropY + corner);
+          ctx.lineTo(cropX, cropY);
+          ctx.lineTo(cropX + corner, cropY);
+          ctx.stroke();
+
+          // 右上
+          ctx.beginPath();
+          ctx.moveTo(cropX + cropW - corner, cropY);
+          ctx.lineTo(cropX + cropW, cropY);
+          ctx.lineTo(cropX + cropW, cropY + corner);
+          ctx.stroke();
+
+          // 左下
+          ctx.beginPath();
+          ctx.moveTo(cropX, cropY + cropH - corner);
+          ctx.lineTo(cropX, cropY + cropH);
+          ctx.lineTo(cropX + corner, cropY + cropH);
+          ctx.stroke();
+
+          // 右下
+          ctx.beginPath();
+          ctx.moveTo(cropX + cropW - corner, cropY + cropH);
+          ctx.lineTo(cropX + cropW, cropY + cropH);
+          ctx.lineTo(cropX + cropW, cropY + cropH - corner);
+          ctx.stroke();
         }
       }
 
@@ -841,7 +885,7 @@ export default function App() {
         (srcH / video.videoWidth);
 
       canvas.height = drawHeight;
-      
+
       ctx.clearRect(
         0,
         0,
