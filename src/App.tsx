@@ -749,15 +749,19 @@ export default function App() {
         });
          
         if (
-          text.length > 0 &&
-          confidence > bestConfidence
+        text.length > 0 &&
+        confidence >= 50 &&
+        confidence > bestConfidence
         ) {
+        bestConfidence = confidence;
+        bestText = text;
+        }
 
-          bestConfidence =
-            confidence;
-
-          bestText =
-            text;
+        if (bestConfidence < 50) {
+        setResult(
+        `⚠ OCR Failed (${bestConfidence.toFixed(0)}%)`
+        );
+        return;
         }
 
         console.log(
