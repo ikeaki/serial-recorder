@@ -268,6 +268,13 @@ export default function App() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
 
+          await videoRef.current.play();
+           
+          console.log(
+          "PLAY",
+          videoRef.current.currentTime
+          );
+
           videoRef.current.onloadedmetadata = () => {
 
             const canvas =
@@ -1073,9 +1080,11 @@ export default function App() {
           autoPlay
           playsInline
           muted
-          style={{ 
-            display: "none" 
-
+          style={{
+          position: "absolute",
+          left: "-9999px",
+          width: "1px",
+          height: "1px"
           }}
         />
 
