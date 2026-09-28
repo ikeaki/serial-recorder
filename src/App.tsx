@@ -314,18 +314,16 @@ export default function App() {
 
     const draw = () => {
 
-      const video =
-        videoRef.current;
-
-      const canvas =
-        previewCanvasRef.current;
+      const video = videoRef.current;
+      const canvas = previewCanvasRef.current;
 
       if (video && canvas && video.videoWidth) {
 
-        const ctx =
-          canvas.getContext("2d");
+        const ctx = canvas.getContext("2d");
 
         if (ctx) {
+
+          let drawHeight = canvas.height;
 
           if (isMobile) {
 
@@ -336,20 +334,48 @@ export default function App() {
               video.videoHeight *
               (1 - cropTopRate - cropBottomRate);
 
-            ctx.drawImage(
-              video,
-              0,
-              srcY,
-              video.videoWidth,
-              srcH,
+            // 縦横比維持
+            drawHeight =
+              canvas.width *
+              (srcH / video.videoWidth);
+
+            // キャンバス高さを変更
+            canvas.height = drawHeight;
+
+            ctx.clearRect(
               0,
               0,
               canvas.width,
               canvas.height
+            );
+
+            ctx.drawImage(
+              video,
+              0,                  // srcX
+              srcY,               // srcY
+              video.videoWidth,   // srcW
+              srcH,               // srcH
+              0,                  // dstX
+              0,                  // dstY
+              canvas.width,       // dstW
+              drawHeight          // dstH
             );
 
           } else {
 
+            canvas.height =
+              video.videoHeight;
+
+            drawHeight =
+              canvas.height;
+
+            ctx.clearRect(
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+
             ctx.drawImage(
               video,
               0,
@@ -357,14 +383,17 @@ export default function App() {
               canvas.width,
               canvas.height
             );
-
           }
+
           const {
             cropX,
             cropY,
             cropW,
             cropH,
-          } = getScanArea(canvas);
+          } = getScanAreaWH(
+            canvas.width,
+            drawHeight
+          );
 
           ctx.strokeStyle = "red";
           ctx.lineWidth = 6;
@@ -865,6 +894,33 @@ export default function App() {
       cropH,
     };
 };
+
+  const getScanAreaWH = (
+    width: number,
+    height: number
+  ) => {
+
+    const cropW =
+      width *
+      (scanWidth / 100);
+
+    const cropH =
+      height *
+      (scanHeight / 100);
+
+    const cropX =
+      (width - cropW) / 2;
+
+    const cropY =
+      (height - cropH) / 2;
+
+    return {
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+    };
+  };
 
   return (
     <div style={{ padding: 20 }}>
