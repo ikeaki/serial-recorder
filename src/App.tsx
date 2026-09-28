@@ -22,6 +22,7 @@ export default function App() {
   const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
+  const isMobile = window.innerWidth <= 768;
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
 
@@ -857,7 +858,9 @@ export default function App() {
           style={{
             position: "relative",
             width: "100%",
-            maxWidth: "350px",
+            maxWidth: isMobile
+            ? "280px"
+            : "450px",
             margin: "0 auto",
             overflow: "hidden",
             borderRadius: "8px",
