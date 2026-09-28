@@ -34,7 +34,6 @@ export default function App() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const [completedUnits, setCompletedUnits] = useState<any[]>([]); 
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
@@ -271,17 +270,19 @@ export default function App() {
     );
   };
 
-  const exportProductionExcel = () => {
+  const exportProductionExcel =
+    async () => {
 
-    if (completedUnits.length === 0) {
+    const data =
+      await loadProductionHistory();
+
+    if (data.length === 0) {
       alert("No Production Data");
       return;
     }
 
     const worksheet =
-      XLSX.utils.json_to_sheet(
-        completedUnits
-      );
+      XLSX.utils.json_to_sheet(data);
 
     const workbook =
       XLSX.utils.book_new();
@@ -298,20 +299,29 @@ export default function App() {
       `production-${
         now.getFullYear()
       }${
-        String(now.getMonth() + 1).padStart(2, "0")
+        String(
+          now.getMonth() + 1
+        ).padStart(2, "0")
       }${
-        String(now.getDate()).padStart(2, "0")
+        String(
+          now.getDate()
+        ).padStart(2, "0")
       }-${
-        String(now.getHours()).padStart(2, "0")
+        String(
+          now.getHours()
+        ).padStart(2, "0")
       }${
-        String(now.getMinutes()).padStart(2, "0")
+        String(
+          now.getMinutes()
+        ).padStart(2, "0")
       }.xlsx`;
 
     XLSX.writeFile(
       workbook,
       fileName
     );
-  };
+
+};
   
   const loadConfig = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -467,19 +477,6 @@ export default function App() {
         );
       });
   }, []);
-
-  useEffect(() => {
-
-    loadProductionHistory()
-      .then(data => {
-
-        setCompletedUnits(
-          [...data].reverse()
-        );
-
-      });
-
-  }, []);  
 
   useEffect(() => {
     let animationId: number;
