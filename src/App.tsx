@@ -22,8 +22,8 @@ export default function App() {
   const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
-  const cropTopRate = 0.15;
-  const cropBottomRate = 0.15;
+  const cropTopRate = 0.2;
+  const cropBottomRate = 0.2;
   const isMobile = window.innerWidth <= 768;
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
@@ -927,7 +927,6 @@ export default function App() {
 
       <h1>Serial Manager</h1>
       <p>
-      Supported:
       QR Code / DataMatrix / Code128 /OCR
       </p>
 
