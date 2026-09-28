@@ -22,6 +22,8 @@ export default function App() {
   const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
+  const cropTopRate = 0.15;
+  const cropBottomRate = 0.15;
   const isMobile = window.innerWidth <= 768;
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
@@ -325,14 +327,38 @@ export default function App() {
 
         if (ctx) {
 
-          ctx.drawImage(
-            video,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-          );
+          if (isMobile) {
 
+            const srcY =
+              video.videoHeight * cropTopRate;
+
+            const srcH =
+              video.videoHeight *
+              (1 - cropTopRate - cropBottomRate);
+
+            ctx.drawImage(
+              video,
+              0,
+              srcY,
+              video.videoWidth,
+              srcH,
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+
+          } else {
+
+            ctx.drawImage(
+              video,
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+
+          }
           const {
             cropX,
             cropY,
