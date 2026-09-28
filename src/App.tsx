@@ -853,11 +853,11 @@ export default function App() {
           style={{
             position: "relative",
             width: "100%",
-            maxHeight: isMobile
-            ? "220px"
-            : "none",
+            maxWidth: isMobile
+            ? "320px"
+            : "450px",
             margin: "0 auto",
-            overflow: "hidden",
+            overflow: "visible",
             borderRadius: "8px",
           }}
         >
