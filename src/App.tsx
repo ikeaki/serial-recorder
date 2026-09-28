@@ -21,6 +21,13 @@ export default function App() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [scanHeight, setScanHeight] = useState(30);
   const [tab, setTab] = useState<"eval" | "prod">("eval");
+  const [modelName, setModelName] = useState("None");
+  const [results, setResults] = useState<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [items, setItems] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
@@ -159,6 +166,7 @@ export default function App() {
       "履歴"
     );
 
+
     const now = new Date();
 
     const fileName =
@@ -181,6 +189,44 @@ export default function App() {
       fileName
     );
   };
+
+  const loadConfig = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      event.target.files?.[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = e => {
+      try {
+        const text =
+          e.target?.result as string;
+
+        const config =
+          JSON.parse(text);
+
+        setModelName(
+          config.model ?? "None"
+        );
+
+        setItems(config.items ?? []);
+        setCurrentIndex(0);
+        setResults({});
+
+        console.log(config);
+
+      } catch (err) {
+        console.error(err);
+
+        alert("Config Load Error");
+      }
+    };
+
+  reader.readAsText(file);
+};
 
   
   useEffect(() => {
@@ -492,6 +538,28 @@ export default function App() {
         text,
         now
       );
+
+      if (
+        tab === "prod" &&
+        items[currentIndex]
+      ) {
+
+        const itemName =
+          items[currentIndex];
+
+        setResults(prev => ({
+          ...prev,
+          [itemName]: text
+        }));
+
+        setCurrentIndex(prev =>
+          Math.min(
+            prev + 1,
+            items.length
+          )
+        );
+      }
+
 
       playSuccess();
       vibrateSuccess();
@@ -807,6 +875,28 @@ export default function App() {
       playSuccess();
       vibrateSuccess();
 
+      if (
+        tab === "prod" &&
+        items[currentIndex]
+      ) {
+
+        const itemName =
+          items[currentIndex];
+
+        setResults(prev => ({
+        ...prev,
+        [itemName]: text,
+        }));
+
+        setCurrentIndex(prev =>
+          Math.min(
+            prev + 1,
+            items.length
+          )
+        );
+      }
+
+
       setResult(
         `OCR: ${text} (${bestConfidence.toFixed(0)}%)`
       );
@@ -1021,6 +1111,14 @@ export default function App() {
       <p>
       QR Code / DataMatrix / Code128 /OCR
       </p>
+
+      <input
+        type="file"
+        accept=".json"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={loadConfig}
+      />
 
     <div
       style={{
@@ -1324,6 +1422,9 @@ export default function App() {
             flex: 1,
             height: "56px",
           }}
+          onClick={() =>
+            fileInputRef.current?.click()
+          }
         >
           Load Config
         </button>
@@ -1337,7 +1438,7 @@ export default function App() {
             textAlign: "center",
           }}
         >
-          Model: None
+          Model: {modelName}
         </div>
 
 
@@ -1350,7 +1451,7 @@ export default function App() {
             textAlign: "center",
           }}
         >
-          Progress: 0 / 0
+        Progress:{currentIndex} / {items.length}
         </div>
       </div>
 
@@ -1372,9 +1473,47 @@ export default function App() {
             marginTop: "20px",
           }}
         >
-          INV1
+        {
+        currentIndex >= items.length
+        ? "COMPLETE"
+        : items[currentIndex]
+        }
+        </div>
+
+        <div style={{ marginTop: "20px" }}>
+          {items.map(item => (
+            <div key={item}>
+              {item}: {results[item] ?? "---"}
+            </div>
+          ))}
         </div>
       </div>
+
+      <div
+        style={{
+          marginTop: "20px",
+        }}
+      >
+        <button
+          style={{
+            width: "100%",
+            height: "60px",
+            fontSize: "20px",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+          }}
+          disabled={
+          scanning ||
+          currentIndex >= items.length
+          }
+          onClick={scanQr}
+        >
+          {scanning ? "Scanning..." : "Scan"}
+        </button>
+      </div>
+
+
+
     </>
     )}
 
