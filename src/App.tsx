@@ -857,7 +857,7 @@ export default function App() {
           style={{
             position: "relative",
             width: "100%",
-            maxWidth: "450px",
+            maxWidth: "350px",
             margin: "0 auto",
             overflow: "hidden",
             borderRadius: "8px",
