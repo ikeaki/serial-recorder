@@ -1310,35 +1310,75 @@ export default function App() {
 
       <div
         style={{
-          border: "1px solid #ccc",
-          padding: "15px",
+          display: "flex",
+          gap: "10px",
           marginBottom: "10px",
+          userSelect: "none",
+          WebkitUserSelect: "none",
         }}
       >
-        機種：未選択
-      </div>
 
-      <button
-        style={{
-          width: "100%",
-          height: "60px",
-          fontSize: "18px",
-        }}
-      >
-        設定読込
-      </button>
+        
+        <button
+          style={{
+            flex: 1,
+            height: "56px",
+          }}
+        >
+          Load Config
+        </button>
+
+        <div
+          style={{
+            flex: 1,
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            padding: "15px",
+            textAlign: "center",
+          }}
+        >
+          Model: None
+        </div>
+
+
+        <div
+          style={{
+            flex: 1,
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            padding: "15px",
+            textAlign: "center",
+          }}
+        >
+          Progress: 0 / 0
+        </div>
+      </div>
 
       <div
         style={{
           border: "1px solid #ccc",
+          borderRadius: "8px",
           padding: "15px",
-          marginTop: "10px",
+          minHeight: "120px",
         }}
       >
-        進捗：0 / 0
+        <div>Current Item</div>
+
+        <div
+          style={{
+            fontSize: "28px",
+            fontWeight: "bold",
+            textAlign: "center",
+            marginTop: "20px",
+          }}
+        >
+          INV1
+        </div>
       </div>
     </>
     )}
+
+
     
     </div>
   );
