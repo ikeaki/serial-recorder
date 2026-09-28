@@ -20,6 +20,7 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [scanHeight, setScanHeight] = useState(30);
+  const [tab, setTab] = useState<"eval" | "prod">("eval");
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
@@ -1015,48 +1016,77 @@ export default function App() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-
+    <div style={{ padding: 15 }}>
       <h1>Serial Manager</h1>
       <p>
       QR Code / DataMatrix / Code128 /OCR
       </p>
 
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            maxWidth: isMobile
-            ? "320px"
-            : "450px",
-            margin: "0 auto",
-            overflow: "visible",
-            borderRadius: "8px",
-          }}
-        >
+    <div
+      style={{
+        display: "flex",
+        marginBottom: "15px",
+        userSelect: "none",
+        WebkitUserSelect: "none",
 
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          style={{
-          position: "absolute",
-          left: "-9999px",
-          width: "1px",
-          height: "1px"
-          }}
-        />
+      }}
+    >
+      <button
+        style={{
+          flex: 1,
+          height: "50px",
+        }}
+        onClick={() => setTab("eval")}
+      >
+        TEST MODE
+      </button>
 
-        <canvas
-          ref={previewCanvasRef}
-          style={{
-            width: "100%",
-            height: "auto",
-            display: "block",
-          }}
-        />
-      </div>
+      <button
+        style={{
+          flex: 1,
+          height: "50px",
+        }}
+        onClick={() => setTab("prod")}
+      >
+        PRODUCTION MODE
+      </button>
+    </div>
+
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        maxWidth: isMobile
+        ? "320px"
+        : "450px",
+        margin: "0 auto",
+        overflow: "visible",
+        borderRadius: "8px",
+      }}
+      >
+
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+        position: "absolute",
+        left: "-9999px",
+        width: "1px",
+        height: "1px"
+        }}
+      />
+
+      <canvas
+        ref={previewCanvasRef}
+        style={{
+          width: "100%",
+          height: "auto",
+          display: "block",
+        }}
+      />
+    </div>
 
         <div
         style={{
@@ -1077,6 +1107,9 @@ export default function App() {
             border: "1px solid #ccc",
             borderRadius: "8px",
             padding: "6px 10px",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+
           }}
         >
           <button
@@ -1114,6 +1147,8 @@ export default function App() {
             border: "1px solid #ccc",
             borderRadius: "8px",
             padding: "6px 10px",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
         >
           <button
@@ -1137,6 +1172,10 @@ export default function App() {
           </button>
         </div>
       </div>
+
+    {tab === "eval" && (
+    <>
+
 
 
       <br />
@@ -1262,7 +1301,45 @@ export default function App() {
           ))}
         </ul>
       )}
+    </>
+    )}
 
+    {tab === "prod" && (
+    <>
+      <h2>Production Mode</h2>
+
+      <div
+        style={{
+          border: "1px solid #ccc",
+          padding: "15px",
+          marginBottom: "10px",
+        }}
+      >
+        機種：未選択
+      </div>
+
+      <button
+        style={{
+          width: "100%",
+          height: "60px",
+          fontSize: "18px",
+        }}
+      >
+        設定読込
+      </button>
+
+      <div
+        style={{
+          border: "1px solid #ccc",
+          padding: "15px",
+          marginTop: "10px",
+        }}
+      >
+        進捗：0 / 0
+      </div>
+    </>
+    )}
+    
     </div>
   );
 }
