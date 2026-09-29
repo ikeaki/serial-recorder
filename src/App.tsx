@@ -799,10 +799,10 @@ export default function App() {
 
       const now = new Date().toLocaleString();
 
-      await saveRecord(
-        text,
-        now
-      );
+      if (tab === "eval") {
+        await saveRecord(text, now);
+      }
+
 
       if (
         tab === "prod" &&
@@ -1155,10 +1155,10 @@ export default function App() {
 
       const now = new Date().toLocaleString();
 
-      await saveRecord(
-        text,
-        now
-      );
+      if (tab === "eval") {
+        await saveRecord(text, now);
+      }
+
 
       setHistory(prev => [
         {
@@ -1787,10 +1787,11 @@ export default function App() {
 
               if (!itemName) return;
 
-              const value = e.target.value;
-
               // 重複チェック
+              const value = e.target.value.trim();
+
               if (
+                value !== "" &&
                 Object.entries(results)
                   .filter(([key]) => key !== itemName)
                   .some(([, v]) => v === value)
@@ -1805,6 +1806,7 @@ export default function App() {
 
                 return;
               }
+
 
               const newResults = {
                 ...results,
