@@ -12,6 +12,27 @@
     {
       "name": "X AMP",
       "type": "OCR"
+    },
+    {
+      "name": "Y AMP",
+      "type": "OCR"
+    },
+    {
+      "name": "U AMP",
+      "type": "OCR"
+    },
+    {
+      "name": "Z AMP",
+      "type": "OCR"
+    },
+    {
+      "name": "C AMP",
+      "type": "OCR"
     }
+
+
+
+
+    
   ]
 }

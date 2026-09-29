@@ -113,14 +113,13 @@ export default function App() {
         "readwrite"
       );
 
-    tx.objectStore(
-      PROD_STORE_NAME
-    ).add(data);
+    const store =
+      tx.objectStore(
+        PROD_STORE_NAME
+      );
 
-    console.log(
-      "Production Saved",
-      data
-    );
+    store.clear();
+    store.add(data);
 
   };
   
@@ -179,6 +178,35 @@ export default function App() {
     );
   };
 
+  useEffect(() => {
+
+    loadProductionHistory()
+      .then(data => {
+
+        if (data.length === 0) {
+          return;
+        }
+
+        const latest =
+          data[data.length - 1];
+
+        const {
+          id,
+          model,
+          updateTime,
+          ...scanData
+        } = latest;
+
+        setResults(scanData);
+
+        if (model) {
+          setModelName(model);
+        }
+
+      });
+
+  }, []);  
+
   const clearHistoryDB = async () => {
     const db = await openDB();
 
@@ -197,6 +225,26 @@ export default function App() {
     await clearHistoryDB();
   };
   
+  const clearProductionDB = async () => {
+
+    const db = await openDB();
+
+    const tx =
+      db.transaction(
+        PROD_STORE_NAME,
+        "readwrite"
+      );
+
+    tx.objectStore(
+      PROD_STORE_NAME
+    ).clear();
+
+    console.log(
+      "Production Data Cleared"
+    );
+
+  };
+
   const existsRecord = async (
     code: string
   ): Promise<boolean> => {
@@ -276,13 +324,38 @@ export default function App() {
     const data =
       await loadProductionHistory();
 
-    if (data.length === 0) {
-      alert("No Production Data");
-      return;
-    }
+    const latest =
+      data.length > 0
+        ? data[data.length - 1]
+        : {
+            model: modelName,
+          };
+
+    const { id, ...record } = latest;
+
+    const exportData = [
+      {
+        Item: "UpdateTime",
+        Value:
+          record.updateTime ?? "",
+      },
+
+      {
+        Item: "Model",
+        Value: record.model ?? "",
+      },
+
+      ...items.map(item => ({
+        Item: item.name,
+        Value:
+          record[item.name] ?? "",
+      })),
+    ];
 
     const worksheet =
-      XLSX.utils.json_to_sheet(data);
+      XLSX.utils.json_to_sheet(
+        exportData
+      );
 
     const workbook =
       XLSX.utils.book_new();
@@ -321,7 +394,7 @@ export default function App() {
       fileName
     );
 
-};
+  };
   
   const loadConfig = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -1610,7 +1683,7 @@ export default function App() {
             textAlign: "center",
           }}
         >
-          Model: {modelName}
+          {modelName}
         </div>
 
 
@@ -1623,7 +1696,7 @@ export default function App() {
             textAlign: "center",
           }}
         >
-        Progress:{currentIndex} / {items.length}
+        {currentIndex} / {items.length}
         </div>
       </div>
 
@@ -1631,47 +1704,20 @@ export default function App() {
         style={{
           border: "1px solid #ccc",
           borderRadius: "8px",
-          padding: "15px",
-          minHeight: "120px",
+          padding: "10px",
         }}
       >
-        <div>Current Item</div>
-
-        <div
-          style={{
-            fontSize: "28px",
-            fontWeight: "bold",
-            textAlign: "center",
-            marginTop: "20px",
-          }}
-        >
-        {
-        currentIndex >= items.length
-        ? "COMPLETE"
-        : items[currentIndex]?.name
-        }
-        </div>
-
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "10px",
-            color: "#666",
-          }}
-        >
-          Type: {items[currentIndex]?.type ?? "-"}
-        </div>
-
         <table
           style={{
             width: "100%",
-            marginTop: "20px",
+            marginTop: "0px",
             borderCollapse: "collapse",
           }}
         >
           <thead>
             <tr>
               <th>Item</th>
+              <th>Type</th>             
               <th>Data</th>
             </tr>
           </thead>
@@ -1679,7 +1725,21 @@ export default function App() {
           <tbody>
             {items.map(item => (
               <tr key={item.name}>
-                <td>{item.name}</td>
+
+                <td
+                  style={{
+                    textDecoration:
+                      items[currentIndex]?.name === item.name
+                        ? "underline"
+                        : "none",
+                  }}
+                >
+                  {item.name}
+                </td>
+
+                <td>
+                  {item.type}
+                </td>
 
                 <td>
                   <input
@@ -1703,22 +1763,63 @@ export default function App() {
                     }}
                   />
                 </td>
+
               </tr>
             ))}
           </tbody>
+
         </table>
       </div>
 
-      <button
+    <div
       style={{
-      width: "100%",
-      height: "50px",
-      marginBottom: "10px",
+        display: "flex",
+        gap: "10px",
+        marginBottom: "10px",
       }}
-      onClick={exportProductionExcel}
+    >
+      <button
+        style={{
+          flex: 1,
+          height: "50px",
+        }}
+        onClick={exportProductionExcel}
       >
-      Export Production Data
+        Export Production Data
       </button>
+
+      <button
+        style={{
+          flex: 1,
+          height: "50px",
+          fontSize: "18px",
+          backgroundColor: "#ccc",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+        }}
+        onPointerDown={() => {
+          pressTimer.current = window.setTimeout(
+            async () => {
+              await clearProductionDB();
+            },
+            1500
+          );
+        }}
+        onPointerUp={() => {
+          if (pressTimer.current) {
+            clearTimeout(pressTimer.current);
+          }
+        }}
+        onPointerLeave={() => {
+          if (pressTimer.current) {
+            clearTimeout(pressTimer.current);
+          }
+        }}
+      >
+        Hold to Clear DB
+      </button>
+
+    </div>
 
     </>
     )}
