@@ -118,8 +118,25 @@ export default function App() {
         PROD_STORE_NAME
       );
 
-    store.clear();
-    store.add(data);
+    await new Promise<void>(
+      (resolve, reject) => {
+
+        const clearReq =
+          store.clear();
+
+        clearReq.onsuccess = () => {
+
+          store.add(data);
+
+          resolve();
+
+        };
+
+        clearReq.onerror =
+          () => reject(clearReq.error);
+
+      }
+    );
 
   };
   
@@ -420,7 +437,7 @@ export default function App() {
 
         setItems(config.items ?? []);
         setCurrentIndex(0);
-        setResults({});
+        //setResults({});
 
         console.log(config);
 
@@ -440,22 +457,21 @@ export default function App() {
       .then(res => res.json())
       .then(config => {
 
-        setModelName(
-          config.model ?? "None"
-        );
-
-        setItems(
-          config.items ?? []
-        );
+        setItems(config.items ?? []);
 
         setCurrentIndex(0);
 
-        setResults({});
+        setModelName(prev =>
+          prev !== "None"
+            ? prev
+            : config.model ?? "None"
+        );
 
       })
       .catch(console.error);
 
-  }, []);  
+  }, []);
+
   
   useEffect(() => {
     async function startCamera() {
@@ -1713,77 +1729,200 @@ export default function App() {
           padding: "10px",
         }}
       >
-        <table
+
+      <div
+        style={{
+          border: "1px solid #ccc",
+          borderRadius: "8px",
+          padding: "15px",
+          marginBottom: "10px",
+        }}
+      >
+
+        {/* Previous */}
+        <div
           style={{
-            width: "100%",
-            marginTop: "0px",
-            borderCollapse: "collapse",
+            display: "grid",
+            gridTemplateColumns: "120px 60px 1fr",
+            alignItems: "center",
+            textAlign: "left",
+            gap: "10px",
+            color: "#888",
+            fontSize: "14px",
+            marginBottom: "15px",
           }}
         >
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Type</th>             
-              <th>Data</th>
-            </tr>
-          </thead>
+          <div>
+            {items[currentIndex - 1]?.name ?? "-"}
+          </div>
 
-          <tbody>
-            {items.map(item => (
-              <tr key={item.name}>
+          <div>
+            {items[currentIndex - 1]?.type ?? ""}
+          </div>
 
-                <td
-                  onClick={() => {
-                    const index = items.findIndex(
-                      x => x.name === item.name
-                    );
+          <div>
+            {
+              results[
+                items[currentIndex - 1]?.name
+              ] ?? ""
+            }
+          </div>
+        </div>
 
-                    setCurrentIndex(index);
-                  }}
-                  style={{
-                    textDecoration:
-                      items[currentIndex]?.name === item.name
-                        ? "underline"
-                        : "none",
+        {/* Current */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "120px 60px 1fr",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "15px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "32px",
+              fontWeight: "bold",
+            }}
+          >
+            {items[currentIndex]?.name ?? ""}
+          </div>
 
-                    cursor: "pointer",
-                  }}
-                >
-                  {item.name}
-                </td>
+          <div
+            style={{
+              fontSize: "20px",
+              color: "#666",
+            }}
+          >
+            {items[currentIndex]?.type ?? ""}
+          </div>
 
-                <td>
-                  {item.type}
-                </td>
+          <input
+            value={
+              results[
+                items[currentIndex]?.name
+              ] ?? ""
+            }
 
-                <td>
-                  <input
-                    value={results[item.name] ?? ""}
-                    onChange={e =>
-                      setResults(prev => ({
-                        ...prev,
-                        [item.name]: e.target.value,
-                      }))
-                    }
+            onChange={async (e) => {
 
-                    onBlur={async () => {
+              const itemName =
+                items[currentIndex]?.name;
 
-                      await saveProductionRecord({
-                        model: modelName,
-                        ...results,
-                        updateTime:
-                          new Date().toLocaleString(),
-                      });
+              if (!itemName) return;
 
-                    }}
-                  />
-                </td>
+              const newResults = {
+                ...results,
+                [itemName]: e.target.value,
+              };
 
-              </tr>
-            ))}
-          </tbody>
+              setResults(newResults);
 
-        </table>
+              await saveProductionRecord({
+                model: modelName,
+                ...newResults,
+                updateTime:
+                  new Date().toLocaleString(),
+              });
+
+            }}
+
+            onKeyDown={(e) => {
+
+              if (e.key === "Enter") {
+
+                setCurrentIndex(prev =>
+                  Math.min(
+                    items.length - 1,
+                    prev + 1
+                  )
+                );
+
+              }
+
+            }}
+
+            style={{
+              width: "100%",
+              height: "50px",
+              fontSize: "24px",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Next */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "120px 60px 1fr",
+            alignItems: "center",
+            textAlign: "left",
+            gap: "10px",
+            color: "#888",
+            fontSize: "14px",
+            marginBottom: "15px",
+          }}
+        >
+          <div>
+            {items[currentIndex + 1]?.name ?? "-"}
+          </div>
+
+          <div>
+            {items[currentIndex + 1]?.type ?? ""}
+          </div>
+
+          <div>
+            {
+              results[
+                items[currentIndex + 1]?.name
+              ] ?? ""
+            }
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+          }}
+        >
+          <button
+            style={{
+              flex: 1,
+              height: "50px",
+            }}
+            onClick={() =>
+              setCurrentIndex(prev =>
+                Math.max(0, prev - 1)
+              )
+            }
+          >
+            ↑ RETURN
+          </button>
+
+          <button
+            style={{
+              flex: 1,
+              height: "50px",
+            }}
+            onClick={() =>
+              setCurrentIndex(prev =>
+                Math.min(
+                  items.length - 1,
+                  prev + 1
+                )
+              )
+            }
+          >
+            NEXT ↓
+          </button>
+        </div>
+
+      </div>
+
+
       </div>
 
     <div
@@ -1833,9 +1972,88 @@ export default function App() {
       >
         Hold to Clear DB
       </button>
-
+      
     </div>
 
+    <div
+      style={{
+        border: "1px solid #ccc",
+        borderRadius: "8px",
+        maxHeight: "300px",
+        overflowY: "auto",
+        padding: "10px",
+      }}
+    >
+
+      {items.map((item, index) => {
+
+        const completed =
+          (results[item.name] ?? "") !== "";
+
+        const current =
+          index === currentIndex;
+
+        return (
+
+          <div
+            key={item.name}
+            onClick={() =>
+              setCurrentIndex(index)
+            }
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "120px 60px 1fr",
+
+              gap: "10px",
+
+              alignItems: "center",
+              textAlign: "left",
+              padding: "10px",
+
+              cursor: "pointer",
+
+              borderBottom:
+                "1px solid #eee",
+
+              backgroundColor:
+                current
+                  ? "#dbeafe"
+                  : "white",
+
+              color:
+                completed
+                  ? "#000"
+                  : "#888",
+            }}
+          >
+
+            <div>
+              {item.name}
+            </div>
+
+            <div>
+              {item.type}
+            </div>
+
+            <div
+              style={{
+                overflow: "hidden",
+                textOverflow:
+                  "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {results[item.name] ?? ""}
+            </div>
+
+          </div>
+
+        );
+
+      })}
+
+    </div>
     </>
     )}
     
