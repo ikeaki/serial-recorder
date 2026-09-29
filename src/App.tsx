@@ -27,7 +27,7 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [scanHeight, setScanHeight] = useState(30);
-  const [tab, setTab] = useState<"eval" | "prod">("eval");
+  const [tab, setTab] = useState<"eval" | "prod">("prod");
   const [modelName, setModelName] = useState("None");
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1475,7 +1475,12 @@ export default function App() {
   };
 
   return (
-    <div style={{ padding: 15 }}>
+    <div
+      style={{
+        padding: 15,
+        touchAction: "manipulation",
+      }}
+    >
 
     <input
       type="file"
@@ -1783,6 +1788,22 @@ export default function App() {
 
           {/* Previous */}
           <div
+            onClick={async () => {
+
+              await saveProductionRecord({
+                model: modelName,
+                configItems: items,
+                ...results,
+                updateTime: new Date().toLocaleString(),
+              });
+
+              setCurrentIndex(prev =>
+                Math.max(0, prev - 1)
+              );
+
+              vibrateSuccess();
+            }}
+
             style={{
               display: "grid",
               gridTemplateColumns: "120px 60px 1fr",
@@ -1793,6 +1814,10 @@ export default function App() {
               fontSize: "14px",
               height: "32px",
               marginBottom: "15px",
+              cursor: "pointer",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              touchAction: "manipulation",
             }}
           >
           <div>
@@ -1817,7 +1842,7 @@ export default function App() {
           style={{
             display: "grid",
             gridTemplateColumns: "120px 60px 1fr",
-            alignItems: "center", // ←これ重要
+            alignItems: "center",
             height: "60px",
             gap: "10px",
             overflow: "hidden",
@@ -1839,7 +1864,8 @@ export default function App() {
             overflow: "hidden",
             wordBreak: "break-word",
 
-            alignSelf: "start",
+            textAlign: "left",            
+
           }}
         >
           {items[currentIndex]?.name ?? ""}
@@ -1850,6 +1876,7 @@ export default function App() {
             style={{
               fontSize: "20px",
               color: "#666",
+              textAlign: "left",
             }}
           >
             {items[currentIndex]?.type ?? ""}
@@ -1933,6 +1960,22 @@ export default function App() {
 
         {/* Next */}
         <div
+          onClick={async () => {
+
+            await saveProductionRecord({
+              model: modelName,
+              configItems: items,
+              ...results,
+              updateTime: new Date().toLocaleString(),
+            });
+
+            setCurrentIndex(prev =>
+              Math.min(items.length - 1, prev + 1)
+            );
+
+            vibrateSuccess();
+
+          }}
           style={{
             display: "grid",
             gridTemplateColumns: "120px 60px 1fr",
@@ -1943,6 +1986,11 @@ export default function App() {
             fontSize: "14px",
             height: "32px",
             marginBottom: "15px",
+
+            cursor: "pointer",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            touchAction: "manipulation",
           }}
         >
 
@@ -1963,75 +2011,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Buttons */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-          }}
-        >
-          <button
-            style={{
-              flex: 1,
-              height: "50px",
-            }}
-            onClick={async () => {
-
-              await saveProductionRecord({
-                model: modelName,
-                configItems: items,
-                ...results,
-                updateTime:
-                  new Date().toLocaleString(),
-              });
-
-              setCurrentIndex(prev =>
-                Math.max(0, prev - 1)
-              );
-
-              playSuccess();
-              vibrateSuccess();
-
-            }}
-          >
-            ↑ RETURN
-          </button>
-
-          <button
-            style={{
-              flex: 1,
-              height: "50px",
-            }}
-            onClick={async () => {
-
-              await saveProductionRecord({
-                model: modelName,
-                configItems: items,
-                ...results,
-                updateTime:
-                  new Date().toLocaleString(),
-              });
-
-              setCurrentIndex(prev =>
-                Math.min(
-                  items.length - 1,
-                  prev + 1
-                )
-              );
-
-              playSuccess();
-              vibrateSuccess();
-
-            }}
-          >
-            NEXT ↓
-          </button>
-        </div>
-
       </div>
-
-
-      </div>
+    </div>
 
 
     <div
