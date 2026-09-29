@@ -42,6 +42,7 @@ export default function App() {
   const isMobile = window.innerWidth <= 768;
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
+  const longPressTriggered = useRef(false);
 
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -336,7 +337,9 @@ export default function App() {
     }));
 
     const worksheet =
-      XLSX.utils.json_to_sheet(data);
+      XLSX.utils.json_to_sheet(
+        data
+      );
 
     const workbook =
       XLSX.utils.book_new();
@@ -388,6 +391,10 @@ export default function App() {
 
     const exportData = [
       ["Model", modelName],
+      [
+        "Export Time",
+        new Date().toLocaleString(),
+      ],
       [],
       ["Name", "Type", "Value"],
 
@@ -397,9 +404,8 @@ export default function App() {
         record[item.name] ?? "",
       ]),
     ];
-
     const worksheet =
-      XLSX.utils.json_to_sheet(
+      XLSX.utils.aoa_to_sheet(
         exportData
       );
 
@@ -466,16 +472,29 @@ export default function App() {
     const model =
       rows[0]?.[1] ?? "None";
 
+    const headerRowIndex =
+      rows.findIndex(
+        row =>
+          row[0] === "Name" &&
+          row[1] === "Type"
+      );
+
+    if (headerRowIndex === -1) {
+      throw new Error(
+        "Invalid Config Format"
+      );
+    }
+
     const items =
       rows
-        .slice(3)
+        .slice(headerRowIndex + 1)
         .filter(row => row[0])
         .map(row => ({
           name: String(row[0]),
-          type: String(row[1]) as "QR" | "OCR",
-          value:
-            String(row[2] ?? ""),
-        }));
+          type: String(row[1]) as
+            "QR" | "OCR",
+          value: String(row[2] ?? ""),
+    }));
 
     const defaultResults =
       Object.fromEntries(
@@ -873,7 +892,7 @@ export default function App() {
         setCurrentIndex(prev =>
           Math.min(
             prev + 1,
-            items.length
+            items.length - 1
           )
         );
       }
@@ -1241,7 +1260,7 @@ export default function App() {
         setCurrentIndex(prev =>
           Math.min(
             prev + 1,
-            items.length
+            items.length - 1
           )
         );
       }
@@ -1818,7 +1837,7 @@ export default function App() {
             overflow: "hidden",
             wordBreak: "break-word",
 
-            alignSelf: "center",
+            alignSelf: "start",
           }}
         >
           {items[currentIndex]?.name ?? ""}
@@ -1848,26 +1867,31 @@ export default function App() {
 
               if (!itemName) return;
 
-              // 重複チェック
-              const value = e.target.value.trim();
 
-              if (
-                value !== "" &&
-                Object.entries(results)
-                  .filter(([key]) => key !== itemName)
-                  .some(([, v]) => v === value)
-              ) {
+              const value = e.target.value;
 
-                playError();
-                vibrateError();
+              const newResults = {
+                ...results,
+                [itemName]: value,
+              };
 
-                setResult(
-                  "⚠ Duplicate In Current Unit"
-                );
+              setResults(newResults);
 
-                return;
-              }
+            }}   
 
+            onKeyDown={async (e) => {
+
+              if (e.key !== "Enter") return;
+
+              const itemName =
+                items[currentIndex]?.name;
+
+              if (!itemName) return;
+
+              const value =
+                (e.target as HTMLInputElement)
+                  .value
+                  .trim();
 
               const newResults = {
                 ...results,
@@ -1884,20 +1908,15 @@ export default function App() {
                   new Date().toLocaleString(),
               });
 
-            }}   
+              setCurrentIndex(prev =>
+                Math.min(
+                  items.length - 1,
+                  prev + 1
+                )
+              );
 
-            onKeyDown={(e) => {
-
-              if (e.key === "Enter") {
-
-                setCurrentIndex(prev =>
-                  Math.min(
-                    items.length - 1,
-                    prev + 1
-                  )
-                );
-
-              }
+              playSuccess();
+              vibrateSuccess();
 
             }}
 
@@ -1954,11 +1973,24 @@ export default function App() {
               flex: 1,
               height: "50px",
             }}
-            onClick={() =>
+            onClick={async () => {
+
+              await saveProductionRecord({
+                model: modelName,
+                configItems: items,
+                ...results,
+                updateTime:
+                  new Date().toLocaleString(),
+              });
+
               setCurrentIndex(prev =>
                 Math.max(0, prev - 1)
-              )
-            }
+              );
+
+              playSuccess();
+              vibrateSuccess();
+
+            }}
           >
             ↑ RETURN
           </button>
@@ -1968,14 +2000,27 @@ export default function App() {
               flex: 1,
               height: "50px",
             }}
-            onClick={() =>
+            onClick={async () => {
+
+              await saveProductionRecord({
+                model: modelName,
+                configItems: items,
+                ...results,
+                updateTime:
+                  new Date().toLocaleString(),
+              });
+
               setCurrentIndex(prev =>
                 Math.min(
                   items.length - 1,
                   prev + 1
                 )
-              )
-            }
+              );
+
+              playSuccess();
+              vibrateSuccess();
+
+            }}
           >
             NEXT ↓
           </button>
@@ -1998,17 +2043,54 @@ export default function App() {
       }}
     >
 
-      <button
-        style={{
-          flex: 1,
-          height: "56px",
-        }}
-        onClick={() =>
-          fileInputRef.current?.click()
+    <button
+      style={{
+        flex: 1,
+        height: "56px",
+      }}
+      onPointerDown={() => {
+        longPressTriggered.current = false;
+
+        pressTimer.current = window.setTimeout(
+          async () => {
+            longPressTriggered.current = true;
+
+            const response = await fetch(
+              "/config/default.xlsx"
+            );
+
+            const buffer =
+              await response.arrayBuffer();
+
+            await loadExcelConfig(buffer);
+
+            playSuccess();
+            vibrateSuccess();
+
+            setResult(
+              "Default Config Loaded"
+            );
+          },
+          1500
+        );
+      }}
+      onPointerUp={() => {
+        if (pressTimer.current) {
+          clearTimeout(pressTimer.current);
         }
-      >
-        Load Config
-      </button>
+
+        if (!longPressTriggered.current) {
+          fileInputRef.current?.click();
+        }
+      }}
+      onPointerLeave={() => {
+        if (pressTimer.current) {
+          clearTimeout(pressTimer.current);
+        }
+      }}
+    >
+      Load Config
+    </button>
 
       <div
         style={{
