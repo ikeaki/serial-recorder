@@ -1369,10 +1369,6 @@ export default function App() {
 
   return (
     <div style={{ padding: 15 }}>
-      <h1>Serial Manager</h1>
-      <p>
-      QR Code / DataMatrix / Code128 /OCR
-      </p>
 
       <input
         type="file"
@@ -1575,9 +1571,6 @@ export default function App() {
     {tab === "eval" && (
     <>
       <br />
-
-
-
       <h2>Latest Scan</h2>
       <div
         style={{
@@ -1666,61 +1659,8 @@ export default function App() {
 
     {tab === "prod" && (
     <>
-      <h2>Production Mode</h2>
+      <div style={{ height: "10px" }} />
 
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginBottom: "10px",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-        }}
-      >
-
-        <button
-          style={{
-            flex: 1,
-            height: "56px",
-          }}
-          onClick={() =>
-            fileInputRef.current?.click()
-          }
-        >
-          Load Config
-        </button>
-
-        <div
-          style={{
-            flex: 1,
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            padding: "15px",
-            textAlign: "center",
-          }}
-        >
-          {modelName}
-        </div>
-
-
-        <div
-          style={{
-            flex: 1,
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            padding: "15px",
-            textAlign: "center",
-          }}
-        >
-        {
-        Object.values(results)
-        .filter(v => v.trim() !== "")
-        .length
-        }
-        /
-        {items.length}
-        </div>
-      </div>
 
       <div
         style={{
@@ -1730,14 +1670,7 @@ export default function App() {
         }}
       >
 
-      <div
-        style={{
-          border: "1px solid #ccc",
-          borderRadius: "8px",
-          padding: "15px",
-          marginBottom: "10px",
-        }}
-      >
+      <div>
 
         {/* Previous */}
         <div
@@ -1924,6 +1857,62 @@ export default function App() {
 
 
       </div>
+
+
+    <div
+      style={{
+        display: "flex",
+        gap: "10px",
+        marginTop: "10px",
+        marginBottom: "10px",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+      }}
+    >
+
+      <button
+        style={{
+          flex: 1,
+          height: "56px",
+        }}
+        onClick={() =>
+          fileInputRef.current?.click()
+        }
+      >
+        Load Config
+      </button>
+
+      <div
+        style={{
+          flex: 1,
+          border: "1px solid #ccc",
+          borderRadius: "8px",
+          padding: "15px",
+          textAlign: "center",
+        }}
+      >
+        {modelName}
+      </div>
+
+
+      <div
+        style={{
+          flex: 1,
+          border: "1px solid #ccc",
+          borderRadius: "8px",
+          padding: "15px",
+          textAlign: "center",
+        }}
+      >
+      {
+      Object.values(results)
+      .filter(v => v.trim() !== "")
+      .length
+      }
+      /
+      {items.length}
+      </div>
+    </div>
 
     <div
       style={{
