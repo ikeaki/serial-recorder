@@ -765,16 +765,37 @@ export default function App() {
 
       setResult(text);
 
-      const exists =
-        await existsRecord(text);
 
-      if (exists) {
+      if (tab === "eval") {
+
+        const exists =
+          await existsRecord(text);
+
+        if (exists) {
+          playError();
+          vibrateError();
+
+          setResult("⚠ Duplicate: " + text);
+          return;
+        }
+
+      }
+
+      if (
+        tab === "prod" &&
+        Object.values(results).includes(text)
+      ) {
+
         playError();
         vibrateError();
-        
-        setResult("⚠ Duplicate: " + text);
+
+        setResult(
+          "⚠ Duplicate In Current Unit"
+        );
+
         return;
       }
+
 
       const now = new Date().toLocaleString();
 
@@ -1100,15 +1121,37 @@ export default function App() {
         return;
       }
 
-      const exists =
-        await existsRecord(text);
+      if (tab === "eval") {
 
-      if (exists) {
+        const exists =
+          await existsRecord(text);
+
+        if (exists) {
+          playError();
+          vibrateError();
+
+          setResult("⚠ Duplicate: " + text);
+
+          return;
+        }
+
+      }
+
+      if (
+        tab === "prod" &&
+        Object.values(results).includes(text)
+      ) {
+
         playError();
         vibrateError();
-        setResult("⚠ Duplicate: " + text);
+
+        setResult(
+          "⚠ Duplicate In Current Unit"
+        );
+
         return;
       }
+
 
       const now = new Date().toLocaleString();
 
