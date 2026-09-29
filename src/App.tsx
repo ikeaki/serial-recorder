@@ -1787,9 +1787,28 @@ export default function App() {
 
               if (!itemName) return;
 
+              const value = e.target.value;
+
+              // 重複チェック
+              if (
+                Object.entries(results)
+                  .filter(([key]) => key !== itemName)
+                  .some(([, v]) => v === value)
+              ) {
+
+                playError();
+                vibrateError();
+
+                setResult(
+                  "⚠ Duplicate In Current Unit"
+                );
+
+                return;
+              }
+
               const newResults = {
                 ...results,
-                [itemName]: e.target.value,
+                [itemName]: value,
               };
 
               setResults(newResults);
@@ -1801,7 +1820,7 @@ export default function App() {
                   new Date().toLocaleString(),
               });
 
-            }}
+            }}   
 
             onKeyDown={(e) => {
 
