@@ -1488,7 +1488,7 @@ export default function App() {
     <div
       style={{
         display: "flex",
-        marginBottom: "15px",
+        marginBottom: "10px",
         userSelect: "none",
         WebkitUserSelect: "none",
 
@@ -1648,8 +1648,8 @@ export default function App() {
         <button
           style={{
             flex: 1,
-            height: "60px",
-            fontSize: "20px",
+            height: "48px",
+            fontSize: "16px",
             userSelect: "none",
             WebkitUserSelect: "none",
           }}
@@ -1662,8 +1662,8 @@ export default function App() {
         <button
           style={{
             flex: 1,
-            height: "60px",
-            fontSize: "20px",
+            height: "48px",
+            fontSize: "16px",
             userSelect: "none",
             WebkitUserSelect: "none",
           }}
