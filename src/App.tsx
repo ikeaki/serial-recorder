@@ -34,6 +34,8 @@ export default function App() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const [activeItem, setActiveItem] = useState<string | null>(null);
+
   const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
@@ -773,6 +775,7 @@ export default function App() {
       ) {
 
         const itemName =
+          activeItem ??
           items[currentIndex].name;
 
         const newResults = {
@@ -781,6 +784,7 @@ export default function App() {
         };
 
         setResults(newResults);
+        setActiveItem(null);
         
         await saveProductionRecord({
           model: modelName,
@@ -1118,6 +1122,7 @@ export default function App() {
       ) {
 
         const itemName =
+          activeItem ??
           items[currentIndex].name;
 
         const newResults = {
@@ -1126,6 +1131,7 @@ export default function App() {
         };
 
         setResults(newResults);
+        setActiveItem(null);
         
         await saveProductionRecord({
           model: modelName,
@@ -1744,6 +1750,11 @@ export default function App() {
                 <td>
                   <input
                     value={results[item.name] ?? ""}
+
+                    onFocus={() => {
+                      setActiveItem(item.name);
+                    }}
+
                     onChange={e =>
                       setResults(prev => ({
                         ...prev,
