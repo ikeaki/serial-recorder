@@ -1497,22 +1497,24 @@ export default function App() {
       <button
         style={{
           flex: 1,
-          height: "50px",
+          height: "36px",
+        }}
+        onClick={() => setTab("prod")}
+      >
+        PRODUCTION MODE
+      </button>
+
+      <button
+        style={{
+          flex: 1,
+          height: "36px",
         }}
         onClick={() => setTab("eval")}
       >
         TEST MODE
       </button>
 
-      <button
-        style={{
-          flex: 1,
-          height: "50px",
-        }}
-        onClick={() => setTab("prod")}
-      >
-        PRODUCTION MODE
-      </button>
+
     </div>
 
     <div
@@ -1586,7 +1588,7 @@ export default function App() {
           </button>
 
           <span>
-            Height: {scanHeight}%
+            H:{scanHeight}%
           </span>
 
           <button
@@ -1623,7 +1625,7 @@ export default function App() {
           </button>
 
           <span>
-            Zoom: {zoom.toFixed(1)}x
+            Z:{zoom.toFixed(1)}x
           </span>
 
           <button
