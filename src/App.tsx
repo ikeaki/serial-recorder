@@ -16,6 +16,7 @@ type HistoryItem = {
 type ScanItem = {
   name: string;
   type: "QR" | "OCR";
+  value?: string;
 };
 
 export default function App() {
@@ -198,31 +199,49 @@ export default function App() {
   useEffect(() => {
 
     loadProductionHistory()
-      .then(data => {
+      .then(async data => {
 
-        if (data.length === 0) {
-          return;
-        }
+        if (data.length > 0) {
 
-        const latest =
-          data[data.length - 1];
+          const latest =
+            data[data.length - 1];
 
-        const {
-          id,
-          model,
-          updateTime,
-          ...scanData
-        } = latest;
+          const {
+            id,
+            model,
+            updateTime,
+            configItems,
+            ...scanData
+          } = latest;
 
-        setResults(scanData);
+          setResults(scanData);
 
-        if (model) {
-          setModelName(model);
+          if (model) {
+            setModelName(model);
+          }
+
+          if (configItems) {
+            setItems(configItems);
+          }
+
+        } else {
+
+          // 初回だけ default.xlsx
+          const response =
+            await fetch(
+              "/config/default.xlsx"
+            );
+
+          const buffer =
+            await response.arrayBuffer();
+
+          loadExcelConfig(buffer);
+
         }
 
       });
 
-  }, []);  
+  }, []);
 
   const clearHistoryDB = async () => {
     const db = await openDB();
@@ -255,6 +274,23 @@ export default function App() {
     tx.objectStore(
       PROD_STORE_NAME
     ).clear();
+
+    // UIもクリア
+    setResults({});
+    setCurrentIndex(0);
+
+    const response =
+      await fetch(
+        "/config/default.xlsx"
+      );
+
+    const buffer =
+      await response.arrayBuffer();
+
+    await loadExcelConfig(buffer);
+
+    playSuccess();
+    vibrateSuccess();
 
     console.log(
       "Production Data Cleared"
@@ -351,22 +387,15 @@ export default function App() {
     const { id, ...record } = latest;
 
     const exportData = [
-      {
-        Item: "UpdateTime",
-        Value:
-          record.updateTime ?? "",
-      },
+      ["Model", modelName],
+      [],
+      ["Name", "Type", "Value"],
 
-      {
-        Item: "Model",
-        Value: record.model ?? "",
-      },
-
-      ...items.map(item => ({
-        Item: item.name,
-        Value:
-          record[item.name] ?? "",
-      })),
+      ...items.map(item => [
+        item.name,
+        item.type,
+        record[item.name] ?? "",
+      ]),
     ];
 
     const worksheet =
@@ -413,64 +442,78 @@ export default function App() {
 
   };
   
+  const loadExcelConfig = async (
+    arrayBuffer: ArrayBuffer
+  ) => {
+
+    const workbook =
+      XLSX.read(
+        arrayBuffer,
+        { type: "array" }
+      );
+
+    const sheet =
+      workbook.Sheets[
+        workbook.SheetNames[0]
+      ];
+
+    const rows =
+      XLSX.utils.sheet_to_json(
+        sheet,
+        { header: 1 }
+      ) as any[][];
+
+    const model =
+      rows[0]?.[1] ?? "None";
+
+    const items =
+      rows
+        .slice(3)
+        .filter(row => row[0])
+        .map(row => ({
+          name: String(row[0]),
+          type: String(row[1]) as "QR" | "OCR",
+          value:
+            String(row[2] ?? ""),
+        }));
+
+    const defaultResults =
+      Object.fromEntries(
+        items.map(item => [
+          item.name,
+          item.value ?? "",
+        ])
+      );
+
+    setModelName(model);
+    setItems(items);
+    setResults(defaultResults);
+    setCurrentIndex(0);
+  };
+
   const loadConfig = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
+
     const file =
       event.target.files?.[0];
 
     if (!file) return;
 
-    const reader = new FileReader();
+    const reader =
+      new FileReader();
 
     reader.onload = e => {
-      try {
-        const text =
-          e.target?.result as string;
 
-        const config =
-          JSON.parse(text);
+      loadExcelConfig(
+        e.target?.result as ArrayBuffer
+      );
 
-        setModelName(
-          config.model ?? "None"
-        );
-
-        setItems(config.items ?? []);
-        setCurrentIndex(0);
-        //setResults({});
-
-        console.log(config);
-
-      } catch (err) {
-        console.error(err);
-
-        alert("Config Load Error");
-      }
     };
 
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
+
   };
-
-  useEffect(() => {
-
-    fetch("/config/default.json")
-      .then(res => res.json())
-      .then(config => {
-
-        setItems(config.items ?? []);
-
-        setCurrentIndex(0);
-
-        setModelName(prev =>
-          prev !== "None"
-            ? prev
-            : config.model ?? "None"
-        );
-
-      })
-      .catch(console.error);
-
-  }, []);
 
   
   useEffect(() => {
@@ -821,9 +864,10 @@ export default function App() {
         
         await saveProductionRecord({
           model: modelName,
+          configItems: items,
           ...newResults,
           updateTime:
-        new Date().toLocaleString(),
+            new Date().toLocaleString(),
         });
 
         setCurrentIndex(prev =>
@@ -1188,9 +1232,10 @@ export default function App() {
         
         await saveProductionRecord({
           model: modelName,
+          configItems: items,
           ...newResults,
           updateTime:
-        new Date().toLocaleString(),
+            new Date().toLocaleString(),
         });
 
         setCurrentIndex(prev =>
@@ -1413,13 +1458,13 @@ export default function App() {
   return (
     <div style={{ padding: 15 }}>
 
-      <input
-        type="file"
-        accept=".json"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        onChange={loadConfig}
-      />
+    <input
+      type="file"
+      accept=".xlsx"
+      ref={fileInputRef}
+      style={{ display: "none" }}
+      onChange={loadConfig}
+    />
 
     <div
       style={{
@@ -1715,19 +1760,20 @@ export default function App() {
 
       <div>
 
-        {/* Previous */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "120px 60px 1fr",
-            alignItems: "center",
-            textAlign: "left",
-            gap: "10px",
-            color: "#888",
-            fontSize: "14px",
-            marginBottom: "15px",
-          }}
-        >
+          {/* Previous */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "120px 60px 1fr",
+              alignItems: "center",
+              textAlign: "left",
+              gap: "10px",
+              color: "#888",
+              fontSize: "14px",
+              height: "32px",
+              marginBottom: "15px",
+            }}
+          >
           <div>
             {items[currentIndex - 1]?.name ?? "-"}
           </div>
@@ -1750,19 +1796,34 @@ export default function App() {
           style={{
             display: "grid",
             gridTemplateColumns: "120px 60px 1fr",
-            alignItems: "center",
+            alignItems: "center", // ←これ重要
+            height: "60px",
             gap: "10px",
-            marginBottom: "15px",
+            overflow: "hidden",
           }}
         >
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-            }}
-          >
-            {items[currentIndex]?.name ?? ""}
-          </div>
+
+        <div
+          style={{
+            height: "60px",
+
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+
+            fontSize: "24px",
+            fontWeight: "bold",
+            lineHeight: "1.1",
+
+            overflow: "hidden",
+            wordBreak: "break-word",
+
+            alignSelf: "center",
+          }}
+        >
+          {items[currentIndex]?.name ?? ""}
+        </div>
+
 
           <div
             style={{
@@ -1817,6 +1878,7 @@ export default function App() {
 
               await saveProductionRecord({
                 model: modelName,
+                configItems: items,
                 ...newResults,
                 updateTime:
                   new Date().toLocaleString(),
@@ -1858,9 +1920,11 @@ export default function App() {
             gap: "10px",
             color: "#888",
             fontSize: "14px",
+            height: "32px",
             marginBottom: "15px",
           }}
         >
+
           <div>
             {items[currentIndex + 1]?.name ?? "-"}
           </div>
