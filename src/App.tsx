@@ -29,6 +29,7 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [scanHeight, setScanHeight] = useState(30);
+  const [scanWidth, setScanWidth] = useState(50);
   const [tab, setTab] = useState<"eval" | "prod">("prod");
   const [sheetLevel, setSheetLevel] = useState(0);
   const [modelName, setModelName] = useState("None");
@@ -38,7 +39,6 @@ export default function App() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const [scanWidth] = useState(50);
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
   const cropBottomRate = 0.2;
@@ -735,6 +735,63 @@ export default function App() {
           ctx.lineTo(cropX + cropW, cropY + cropH);
           ctx.lineTo(cropX + cropW, cropY + cropH - corner);
           ctx.stroke();
+
+          // 操作ガイド
+          ctx.fillStyle = "rgba(255,255,255,0.35)";
+          ctx.font = "bold 18px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          ctx.shadowColor = "black";
+          ctx.shadowBlur = 4;
+
+          // 上（Height+）
+          ctx.fillText(
+            "H+",
+            canvas.width / 2,
+            cropY / 2
+          );
+
+          // 下（Height-）
+          ctx.fillText(
+            "H-",
+            canvas.width / 2,
+            cropY + cropH +
+              (canvas.height - cropY - cropH) / 2
+          );
+
+          // 左（Width+）
+          ctx.fillText(
+            "W+",
+            cropX / 2,
+            cropY + cropH / 2
+          );
+
+          // 右（Width-）
+          ctx.fillText(
+            "W-",
+            cropX + cropW +
+              (canvas.width - cropX - cropW) / 2,
+            cropY + cropH / 2
+          );
+
+          // 左上（Zoom+）
+          ctx.fillText(
+            "Z+",
+            cropX / 2,
+            cropY / 2
+          );
+
+          // 左下（Zoom-）
+          ctx.fillText(
+            "Z-",
+            cropX / 2,
+            cropY + cropH +
+              (canvas.height - cropY - cropH) / 2
+          );
+
+          ctx.shadowBlur = 0;
+
         }
       }
 
@@ -749,7 +806,7 @@ export default function App() {
         animationId
       );
 
-}, [scanHeight, scanWidth]);
+}, [scanHeight, scanWidth, zoom]);
 
   
   const scanQr = async () => {
@@ -1587,10 +1644,112 @@ export default function App() {
 
       <canvas
         ref={previewCanvasRef}
+
+        onClick={(e) => {
+
+          const rect =
+            e.currentTarget.getBoundingClientRect();
+
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+
+          const w = rect.width;
+          const h = rect.height;
+
+          const {
+            cropX,
+            cropY,
+            cropW,
+            cropH,
+          } = getScanAreaWH(w, h);
+
+        // 左上 → Zoom +
+        if (
+          x < cropX &&
+          y < cropY
+        ) {
+
+          changeZoom(0.5);
+          vibrateSuccess();
+          return;
+
+        }
+
+        // 左下 → Zoom -
+        if (
+          x < cropX &&
+          y > cropY + cropH
+        ) {
+
+          changeZoom(-0.5);
+          vibrateSuccess();
+          return;
+
+        }
+
+        // 上 → Height +
+        if (
+          x >= cropX &&
+          x <= cropX + cropW &&
+          y < cropY
+        ) {
+
+          setScanHeight(prev =>
+            Math.min(60, prev + 5)
+          );
+
+          vibrateSuccess();
+        }
+
+        // 下 → Height -
+        else if (
+          x >= cropX &&
+          x <= cropX + cropW &&
+          y > cropY + cropH
+        ) {
+
+          setScanHeight(prev =>
+            Math.max(5, prev - 5)
+          );
+
+          vibrateSuccess();
+        }
+
+        // 左 → Width +
+        else if (
+          x < cropX &&
+          y >= cropY &&
+          y <= cropY + cropH
+        ) {
+
+          setScanWidth(prev =>
+            Math.min(90, prev + 5)
+          );
+
+          vibrateSuccess();
+        }
+
+        // 右 → Width -
+        else if (
+          x > cropX + cropW &&
+          y >= cropY &&
+          y <= cropY + cropH
+        ) {
+
+          setScanWidth(prev =>
+            Math.max(20, prev - 5)
+          );
+
+          vibrateSuccess();
+        }
+
+        }}
+
         style={{
           width: "100%",
           height: "auto",
           display: "block",
+          cursor: "pointer",
         }}
       />
       <div
@@ -1654,6 +1813,26 @@ export default function App() {
           /{items.length}
         </span>
       </div>
+
+      <div
+        style={{
+          position: "absolute",
+          right: "6px",
+          bottom: "0px",
+
+          color: "white",
+          fontSize: "12px",
+          fontWeight: "bold",
+
+          textShadow:
+            "1px 1px 2px black, -1px -1px 2px black",
+
+          pointerEvents: "none",
+        }}
+      >
+        H{scanHeight}% W{scanWidth}% Z{zoom.toFixed(1)}x
+      </div>
+
     </div>
 
         <div
