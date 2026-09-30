@@ -32,7 +32,6 @@ export default function App() {
   const [scanWidth, setScanWidth] = useState(50);
   const [tab, setTab] = useState<"eval" | "prod">("prod");
   const [sheetLevel, setSheetLevel] = useState(0);
-  const [modelName, setModelName] = useState("None");
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ScanItem[]>([]);
@@ -212,7 +211,6 @@ export default function App() {
 
           const {
             id,
-            model,
             updateTime,
             configItems,
             ...scanData
@@ -220,12 +218,24 @@ export default function App() {
 
           setResults(scanData);
 
-          if (model) {
-            setModelName(model);
-          }
 
           if (configItems) {
+
             setItems(configItems);
+
+            const nextIndex =
+              configItems.findIndex(
+                (item: ScanItem) =>
+                  !(scanData[item.name] ?? "")
+                    .toString()
+                    .trim()
+              );
+
+            setCurrentIndex(
+              nextIndex >= 0
+                ? nextIndex
+                : configItems.length - 1
+            );
           }
 
         } else {
@@ -386,14 +396,11 @@ export default function App() {
     const latest =
       data.length > 0
         ? data[data.length - 1]
-        : {
-            model: modelName,
-          };
+        : {};
 
     const { id, ...record } = latest;
 
     const exportData = [
-      ["Model", modelName],
       [
         "Export Time",
         new Date().toLocaleString(),
@@ -472,8 +479,6 @@ export default function App() {
         { header: 1 }
       ) as any[][];
 
-    const model =
-      rows[0]?.[1] ?? "None";
 
     const headerRowIndex =
       rows.findIndex(
@@ -507,10 +512,16 @@ export default function App() {
         ])
       );
 
-    setModelName(model);
     setItems(items);
     setResults(defaultResults);
     setCurrentIndex(0);
+
+    await saveProductionRecord({
+    configItems: items,
+    ...defaultResults,
+    updateTime: new Date().toLocaleString(),
+    });
+
   };
 
   const loadConfig = (
@@ -536,6 +547,16 @@ export default function App() {
     reader.readAsArrayBuffer(file);
 
   };
+
+  const progressCount = items.filter(
+    item =>
+    item.name !== "Model" &&
+    (results[item.name] ?? "").trim() !== ""
+    ).length;
+
+  const totalCount = items.filter(
+    item => item.name !== "Model"
+    ).length;
 
   useEffect(() => {
 
@@ -961,7 +982,6 @@ export default function App() {
         setResults(newResults);
         
         await saveProductionRecord({
-          model: modelName,
           configItems: items,
           ...newResults,
           updateTime:
@@ -1330,7 +1350,6 @@ export default function App() {
         setResults(newResults);
         
         await saveProductionRecord({
-          model: modelName,
           configItems: items,
           ...newResults,
           updateTime:
@@ -1797,7 +1816,9 @@ export default function App() {
           pointerEvents: "none",
         }}
       >
-        <span>{modelName}</span>
+        <span>
+          {results["Model"] ?? "-"}
+        </span>
 
         <span>｜</span>
 
@@ -1821,12 +1842,7 @@ export default function App() {
         <span>｜</span>
 
         <span>
-          {
-            Object.values(results)
-              .filter(v => v.trim() !== "")
-              .length
-          }
-          /{items.length}
+          {progressCount}/{totalCount}
         </span>
       </div>
 
@@ -2000,10 +2016,10 @@ export default function App() {
             onClick={async () => {
 
               await saveProductionRecord({
-                model: modelName,
                 configItems: items,
                 ...results,
-                updateTime: new Date().toLocaleString(),
+                updateTime:
+                  new Date().toLocaleString(),
               });
 
               setCurrentIndex(prev =>
@@ -2139,7 +2155,6 @@ export default function App() {
               setResults(newResults);
 
               await saveProductionRecord({
-                model: modelName,
                 configItems: items,
                 ...newResults,
                 updateTime:
@@ -2172,7 +2187,6 @@ export default function App() {
           onClick={async () => {
 
             await saveProductionRecord({
-              model: modelName,
               configItems: items,
               ...results,
               updateTime: new Date().toLocaleString(),
@@ -2400,19 +2414,6 @@ export default function App() {
           </button>
         </div>
 
-          {/* Model */}
-
-          <div
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-              padding: "15px",
-              textAlign: "center",
-              marginBottom: "10px",
-            }}
-          >
-            {modelName}
-          </div>
 
           {/* Item List */}
 
