@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import * as XLSX from "xlsx";
-import Tesseract from "tesseract.js";
+import { createWorker } from "tesseract.js";
 
 const DB_NAME = "serial-db";
 const STORE_NAME = "history";
@@ -22,12 +22,15 @@ type ScanItem = {
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const workerRef = useRef<any>(null);
+  const [ocrReady, setOcrReady] = useState(false);
   const [result, setResult] = useState("Not Scanned");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [scanHeight, setScanHeight] = useState(30);
   const [tab, setTab] = useState<"eval" | "prod">("prod");
+  const [sheetLevel, setSheetLevel] = useState(0);
   const [modelName, setModelName] = useState("None");
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -534,6 +537,25 @@ export default function App() {
 
   };
 
+  useEffect(() => {
+
+    async function initOCR() {
+
+      const worker =
+        await createWorker("eng");
+
+      workerRef.current = worker;
+
+      setOcrReady(true);
+    }
+
+    initOCR();
+
+    return () => {
+      workerRef.current?.terminate();
+    };
+
+  }, []);
   
   useEffect(() => {
     async function startCamera() {
@@ -1098,7 +1120,7 @@ export default function App() {
           );
 
         const result =
-          await Tesseract.recognize(
+          await workerRef.current.recognize(
             image,
             "eng",
             {
@@ -1514,7 +1536,10 @@ export default function App() {
           flex: 1,
           height: "36px",
         }}
-        onClick={() => setTab("eval")}
+        onClick={() => {
+          setTab("eval");
+          setSheetLevel(0);
+        }}
       >
         TEST MODE
       </button>
@@ -1556,67 +1581,67 @@ export default function App() {
           display: "block",
         }}
       />
-<div
-  style={{
-    position: "absolute",
-    top: "0px",
-    left: "6px",
+      <div
+        style={{
+          position: "absolute",
+          top: "0px",
+          left: "6px",
 
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "flex-start",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-start",
 
-    gap: "6px",
+          gap: "6px",
 
-    color: "white",
-    fontSize: "12px",
-    fontWeight: "bold",
+          color: "white",
+          fontSize: "12px",
+          fontWeight: "bold",
 
-    width: "calc(100% - 12px)",
+          width: "calc(100% - 12px)",
 
-    overflow: "hidden",
-    whiteSpace: "nowrap",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
 
-    textAlign: "left",
+          textAlign: "left",
 
-    textShadow:
-      "1px 1px 2px black, -1px -1px 2px black",
+          textShadow:
+            "1px 1px 2px black, -1px -1px 2px black",
 
-    pointerEvents: "none",
-  }}
->
-  <span>{modelName}</span>
+          pointerEvents: "none",
+        }}
+      >
+        <span>{modelName}</span>
 
-  <span>｜</span>
+        <span>｜</span>
 
-  <span
-    style={{
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      flex: 1,
-      minWidth: 0,
-    }}
-  >
-    {items[currentIndex]?.name ?? "-"}
-  </span>
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          {items[currentIndex]?.name ?? "-"}
+        </span>
 
-  <span>｜</span>
+        <span>｜</span>
 
-  <span>
-    {items[currentIndex]?.type ?? "-"}
-  </span>
+        <span>
+          {items[currentIndex]?.type ?? "-"}
+        </span>
 
-  <span>｜</span>
+        <span>｜</span>
 
-  <span>
-    {
-      Object.values(results)
-        .filter(v => v.trim() !== "")
-        .length
-    }
-    /{items.length}
-  </span>
-</div>
+        <span>
+          {
+            Object.values(results)
+              .filter(v => v.trim() !== "")
+              .length
+          }
+          /{items.length}
+        </span>
+      </div>
     </div>
 
         <div
@@ -1733,7 +1758,7 @@ export default function App() {
             userSelect: "none",
             WebkitUserSelect: "none",
           }}
-          disabled={ocrLoading}
+          disabled={ocrLoading || !ocrReady}
           onClick={runOCR}
         >
           {ocrLoading
@@ -2076,230 +2101,293 @@ export default function App() {
     </div>
 
 
-    <div
-      style={{
-        display: "flex",
-        gap: "10px",
-        marginTop: "10px",
-        marginBottom: "10px",
-        userSelect: "none",
-        WebkitUserSelect: "none",
-      }}
-    >
-
-    <button
-      style={{
-        flex: 1,
-        height: "56px",
-      }}
-      onPointerDown={() => {
-        longPressTriggered.current = false;
-
-        pressTimer.current = window.setTimeout(
-          async () => {
-            longPressTriggered.current = true;
-
-            const response = await fetch(
-              "/config/default.xlsx"
-            );
-
-            const buffer =
-              await response.arrayBuffer();
-
-            await loadExcelConfig(buffer);
-
-            playSuccess();
-            vibrateSuccess();
-
-            setResult(
-              "Default Config Loaded"
-            );
-          },
-          1500
-        );
-      }}
-      onPointerUp={() => {
-        if (pressTimer.current) {
-          clearTimeout(pressTimer.current);
-        }
-
-        if (!longPressTriggered.current) {
-          fileInputRef.current?.click();
-        }
-      }}
-      onPointerLeave={() => {
-        if (pressTimer.current) {
-          clearTimeout(pressTimer.current);
-        }
-      }}
-    >
-      Load Config
-    </button>
-
-      <div
-        style={{
-          flex: 1,
-          border: "1px solid #ccc",
-          borderRadius: "8px",
-          padding: "15px",
-          textAlign: "center",
-        }}
-      >
-        {modelName}
-      </div>
-
-
-      <div
-        style={{
-          flex: 1,
-          border: "1px solid #ccc",
-          borderRadius: "8px",
-          padding: "15px",
-          textAlign: "center",
-        }}
-      >
-      {
-      Object.values(results)
-      .filter(v => v.trim() !== "")
-      .length
-      }
-      /
-      {items.length}
-      </div>
-    </div>
-
-    <div
-      style={{
-        display: "flex",
-        gap: "10px",
-        marginBottom: "10px",
-      }}
-    >
-      <button
-        style={{
-          flex: 1,
-          height: "50px",
-        }}
-        onClick={exportProductionExcel}
-      >
-        Export Production Data
-      </button>
-
-      <button
-        style={{
-          flex: 1,
-          height: "50px",
-          fontSize: "18px",
-          backgroundColor: "#ccc",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-        }}
-        onPointerDown={() => {
-          pressTimer.current = window.setTimeout(
-            async () => {
-              await clearProductionDB();
-            },
-            1500
-          );
-        }}
-        onPointerUp={() => {
-          if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-          }
-        }}
-        onPointerLeave={() => {
-          if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-          }
-        }}
-      >
-        Hold to Clear DB
-      </button>
-      
-    </div>
-
-    <div
-      style={{
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        maxHeight: "300px",
-        overflowY: "auto",
-        padding: "10px",
-      }}
-    >
-
-      {items.map((item, index) => {
-
-        const completed =
-          (results[item.name] ?? "") !== "";
-
-        const current =
-          index === currentIndex;
-
-        return (
-
-          <div
-            key={item.name}
-            onClick={() =>
-              setCurrentIndex(index)
-            }
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "120px 60px 1fr",
-
-              gap: "10px",
-
-              alignItems: "center",
-              textAlign: "left",
-              padding: "10px",
-
-              cursor: "pointer",
-
-              borderBottom:
-                "1px solid #eee",
-
-              backgroundColor:
-                current
-                  ? "#dbeafe"
-                  : "white",
-
-              color:
-                completed
-                  ? "#000"
-                  : "#888",
-            }}
-          >
-
-            <div>
-              {item.name}
-            </div>
-
-            <div>
-              {item.type}
-            </div>
-
-            <div
-              style={{
-                overflow: "hidden",
-                textOverflow:
-                  "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {results[item.name] ?? ""}
-            </div>
-
-          </div>
-
-        );
-
-      })}
-
-    </div>
     </>
     )}
-    
-    </div>
+
+    {tab === "prod" && (    
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+
+          height: "100vh",
+
+          background: "white",
+
+          borderTopLeftRadius: "16px",
+          borderTopRightRadius: "16px",
+
+          transform:
+            sheetLevel === 0
+              ? "translateY(calc(100vh - 40px))"
+              : sheetLevel === 1
+              ? "translateY(60vh)"
+              : "translateY(0)",
+
+          transition: "0.3s",
+
+          zIndex: 1000,
+
+          boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
+        }}
+      >
+        <div
+          onClick={() =>
+            setSheetLevel(prev =>
+              prev >= 2 ? 0 : prev + 1
+            )
+          }
+          style={{
+            height: "40px",
+
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+
+            cursor: "pointer",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "4px",
+              borderRadius: "2px",
+              background: "#999",
+            }}
+          />
+        </div>
+
+        {/* Top Buttons */}
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            marginBottom: "10px",
+          }}
+        >
+        <button
+          style={{
+            flex: 1,
+            height: "50px",
+          }}
+          onPointerDown={() => {
+            longPressTriggered.current = false;
+
+            pressTimer.current = window.setTimeout(
+              async () => {
+                longPressTriggered.current = true;
+
+                const response = await fetch(
+                  "/config/default.xlsx"
+                );
+
+                const buffer =
+                  await response.arrayBuffer();
+
+                await loadExcelConfig(buffer);
+
+                playSuccess();
+                vibrateSuccess();
+
+                setResult(
+                  "Default Config Loaded"
+                );
+              },
+              1500
+            );
+          }}
+          onPointerUp={() => {
+            if (pressTimer.current) {
+              clearTimeout(pressTimer.current);
+            }
+
+            if (!longPressTriggered.current) {
+              fileInputRef.current?.click();
+            }
+          }}
+          onPointerLeave={() => {
+            if (pressTimer.current) {
+              clearTimeout(pressTimer.current);
+            }
+          }}
+
+          onPointerCancel={() => {
+            if (pressTimer.current) {
+              clearTimeout(pressTimer.current);
+            }
+          }}
+
+        >
+          LOAD
+        </button>
+
+          <button
+            style={{
+              flex: 1,
+              height: "50px",
+            }}
+            onClick={exportProductionExcel}
+          >
+            EXPORT
+          </button>
+
+          <button
+            style={{
+              flex: 1,
+              height: "50px",
+              backgroundColor: "#ccc",
+            }}
+            onPointerDown={() => {
+              pressTimer.current =
+                window.setTimeout(
+                  async () => {
+                    await clearProductionDB();
+                  },
+                  1500
+                );
+            }}
+            onPointerUp={() => {
+              if (pressTimer.current) {
+                clearTimeout(
+                  pressTimer.current
+                );
+              }
+            }}
+            onPointerLeave={() => {
+              if (pressTimer.current) {
+                clearTimeout(
+                  pressTimer.current
+                );
+              }
+            }}
+          >
+            CLEAR
+          </button>
+        </div>
+
+          {/* Model */}
+
+          <div
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              padding: "15px",
+              textAlign: "center",
+              marginBottom: "10px",
+            }}
+          >
+            {modelName}
+          </div>
+
+          {/* Item List */}
+
+          <div
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              maxHeight: "250px",
+              overflowY: "auto",
+              padding: "10px",
+            }}
+          >
+            {items.map((item, index) => {
+
+              const completed =
+                (results[item.name] ?? "") !== "";
+
+              const current =
+                index === currentIndex;
+
+              return (
+
+              <div
+                key={item.name}
+
+                onPointerDown={() => {
+                  pressTimer.current = window.setTimeout(
+                    () => {
+
+                      setCurrentIndex(index);
+                      setSheetLevel(0);
+
+                      playSuccess();
+                      vibrateSuccess();
+
+                    },
+                    1500
+                  );
+                }}
+
+                onPointerUp={() => {
+                  if (pressTimer.current) {
+                    clearTimeout(pressTimer.current);
+                  }
+                }}
+
+                onPointerLeave={() => {
+                  if (pressTimer.current) {
+                    clearTimeout(pressTimer.current);
+                  }
+                }}
+
+                onPointerCancel={() => {
+                  if (pressTimer.current) {
+                    clearTimeout(pressTimer.current);
+                  }
+                }}
+
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "120px 60px 1fr",
+
+                    gap: "10px",
+
+                    padding: "10px",
+
+                    userSelect: "none",
+                    WebkitUserSelect: "none",
+                    WebkitTouchCallout: "none",
+
+                    cursor: "pointer",
+
+                    borderBottom:
+                      "1px solid #eee",
+
+                    backgroundColor:
+                      current
+                        ? "#dbeafe"
+                        : "white",
+
+                    color:
+                      completed
+                        ? "#000"
+                        : "#888",
+                  }}
+                >
+                  <div>{item.name}</div>
+                  <div>{item.type}</div>
+
+                  <div
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {results[item.name] ?? ""}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      )}
+    </div>    
+
   );
 }
