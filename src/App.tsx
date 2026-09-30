@@ -1008,9 +1008,10 @@ export default function App() {
 
       document.getElementById("debugFull")?.remove();
       canvas.id = "debugFull";
-
-      document.body.appendChild(canvas);
-
+      
+      if (tab === "eval") {
+        document.body.appendChild(canvas);
+      }
       const cropCanvas =
         document.createElement("canvas");
 
