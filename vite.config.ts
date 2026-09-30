@@ -12,6 +12,10 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
 
+      includeAssets: [
+      "config/default.xlsx"
+      ],
+
       manifest: {
         name: "Serial Recorder",
         short_name: "Serial",
