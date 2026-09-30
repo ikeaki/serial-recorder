@@ -1008,7 +1008,7 @@ export default function App() {
 
       document.getElementById("debugFull")?.remove();
       canvas.id = "debugFull";
-      
+
       if (tab === "eval") {
         document.body.appendChild(canvas);
       }
@@ -1195,10 +1195,10 @@ export default function App() {
       cropCanvas.style.maxWidth = "450px";
       cropCanvas.style.border = "2px solid red";
 
-      document.body.appendChild(
-        cropCanvas
-      );
-      
+      if (tab === "eval") {
+        document.body.appendChild(cropCanvas);
+      }
+
       if (
         text.length === 0 ||
         !/^[0-9A-Z]+$/.test(text)
