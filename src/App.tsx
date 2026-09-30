@@ -2172,6 +2172,9 @@ export default function App() {
           style={{
             flex: 1,
             height: "50px",
+            cursor: "pointer",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
           onPointerDown={() => {
             longPressTriggered.current = false;
@@ -2228,6 +2231,9 @@ export default function App() {
             style={{
               flex: 1,
               height: "50px",
+              cursor: "pointer",
+              userSelect: "none",
+              WebkitUserSelect: "none",
             }}
             onClick={exportProductionExcel}
           >
@@ -2239,6 +2245,9 @@ export default function App() {
               flex: 1,
               height: "50px",
               backgroundColor: "#ccc",
+              cursor: "pointer",
+              userSelect: "none",
+              WebkitUserSelect: "none",
             }}
             onPointerDown={() => {
               pressTimer.current =
