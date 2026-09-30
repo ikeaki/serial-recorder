@@ -44,8 +44,9 @@ export default function App() {
   const isMobile = window.innerWidth <= 768;
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
-  const longPressTriggered = useRef(false);
+  const clickTimer = useRef<number | null>(null);
 
+  const longPressTriggered = useRef(false);
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, 2);
@@ -197,6 +198,57 @@ export default function App() {
 
       }
     );
+  };
+
+  const loadFromOneDrive = async () => {
+
+    try {
+
+      const url = results["ConfigURL"];
+
+      if (!url) {
+
+        playError();
+        vibrateError();
+
+        setResult(
+          "ConfigURL Not Found"
+        );
+
+        return;
+      }
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(
+          "Download Failed"
+        );
+      }
+
+      const buffer =
+        await response.arrayBuffer();
+
+      await loadExcelConfig(buffer);
+
+      playSuccess();
+      vibrateSuccess();
+
+      setResult(
+        "ConfigURL Loaded"
+      );
+
+    } catch (err) {
+
+      console.error(err);
+
+      playError();
+      vibrateError();
+
+      setResult(
+        "ConfigURL Load Failed"
+      );
+    }
   };
 
   useEffect(() => {
@@ -550,13 +602,19 @@ export default function App() {
 
   const progressCount = items.filter(
     item =>
-    item.name !== "Model" &&
-    (results[item.name] ?? "").trim() !== ""
-    ).length;
+      !["Model", "ConfigURL"].includes(
+        item.name
+      ) &&
+      (results[item.name] ?? "").trim() !== ""
+  ).length;
 
   const totalCount = items.filter(
-    item => item.name !== "Model"
-    ).length;
+    item =>
+      !["Model", "ConfigURL"].includes(
+        item.name
+      )
+  ).length;
+
 
   useEffect(() => {
 
@@ -2339,25 +2397,37 @@ export default function App() {
               1500
             );
           }}
+
           onPointerUp={() => {
+
             if (pressTimer.current) {
               clearTimeout(pressTimer.current);
             }
 
-            if (!longPressTriggered.current) {
-              fileInputRef.current?.click();
+            if (longPressTriggered.current) {
+              return;
             }
-          }}
-          onPointerLeave={() => {
-            if (pressTimer.current) {
-              clearTimeout(pressTimer.current);
-            }
-          }}
 
-          onPointerCancel={() => {
-            if (pressTimer.current) {
-              clearTimeout(pressTimer.current);
+            if (clickTimer.current) {
+
+              clearTimeout(clickTimer.current);
+              clickTimer.current = null;
+
+              loadFromOneDrive();
+
+              return;
             }
+
+            clickTimer.current = window.setTimeout(
+              () => {
+
+                clickTimer.current = null;
+
+                fileInputRef.current?.click();
+
+              },
+              300
+            );
           }}
 
         >
