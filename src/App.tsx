@@ -1626,6 +1626,13 @@ export default function App() {
         margin: "0 auto",
         overflow: "visible",
         borderRadius: "8px",
+
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
+        
+        touchAction: "manipulation",        
+
       }}
       >
 
@@ -1644,6 +1651,7 @@ export default function App() {
 
       <canvas
         ref={previewCanvasRef}
+        onContextMenu={(e) => e.preventDefault()}
 
         onClick={(e) => {
 
@@ -1750,6 +1758,14 @@ export default function App() {
           height: "auto",
           display: "block",
           cursor: "pointer",
+
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          WebkitTouchCallout: "none",
+          WebkitTapHighlightColor: "transparent",
+          
+          touchAction: "manipulation",          
+
         }}
       />
       <div
@@ -1830,96 +1846,12 @@ export default function App() {
           pointerEvents: "none",
         }}
       >
-        H{scanHeight}% W{scanWidth}% Z{zoom.toFixed(1)}x
+        {`H:${scanHeight}% W:${scanWidth}% Z:${zoom.toFixed(1)}x`}
       </div>
 
     </div>
 
-        <div
-        style={{
-        display: "flex",
-        gap: "10px",
-        marginTop: "10px",
-        width: "100%",
-        }}
-        >
-          
-        {/* Height */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            padding: "6px 10px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-
-          }}
-        >
-          <button
-            onClick={() =>
-              setScanHeight(
-                Math.max(5, scanHeight - 5)
-              )
-            }
-          >
-            −
-          </button>
-
-          <span>
-            H:{scanHeight}%
-          </span>
-
-          <button
-            onClick={() =>
-              setScanHeight(
-                Math.min(60, scanHeight + 5)
-              )
-            }
-          >
-            ＋
-          </button>
-        </div>
-
-        {/* Zoom */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            padding: "6px 10px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-          }}
-        >
-          <button
-            onClick={() =>
-              changeZoom(-0.5)
-            }
-          >
-            −
-          </button>
-
-          <span>
-            Z:{zoom.toFixed(1)}x
-          </span>
-
-          <button
-            onClick={() =>
-              changeZoom(0.5)
-            }
-          >
-            ＋
-          </button>
-        </div>
-      </div>
-
+        
       <div
         style={{
           display: "flex",
