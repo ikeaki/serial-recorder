@@ -1527,7 +1527,18 @@ export default function App() {
           flex: 1,
           height: "36px",
         }}
-        onClick={() => setTab("prod")}
+        onClick={() => {
+
+          document
+            .getElementById("debugFull")
+            ?.remove();
+
+          document
+            .getElementById("debugCanvas")
+            ?.remove();
+
+          setTab("prod");
+        }}
       >
         PRODUCTION MODE
       </button>
