@@ -8,7 +8,6 @@ const STORE_NAME = "history";
 const PROD_STORE_NAME = "production";
 
 type HistoryItem = {
-  id?: number;
   code: string;
   time: string;
 };
@@ -17,6 +16,7 @@ type ScanItem = {
   name: string;
   type: "QR" | "OCR";
   value?: string;
+  regex?: string;
 };
 
 export default function App() {
@@ -46,10 +46,13 @@ export default function App() {
   const pressTimer = useRef<number | null>(null);
   const clickTimer = useRef<number | null>(null);
 
-  const longPressTriggered = useRef(false);
+  const loadLongPressTriggered = useRef(false);
+  const exportLongPressTriggered = useRef(false);
+
+
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 2);
+      const request = indexedDB.open(DB_NAME, 3);
 
       request.onupgradeneeded = () => {
 
@@ -59,8 +62,7 @@ export default function App() {
           db.createObjectStore(
             STORE_NAME,
             {
-              keyPath: "id",
-              autoIncrement: true,
+              keyPath: "code",
             }
           );
         }
@@ -78,7 +80,6 @@ export default function App() {
             }
           );
         }
-
       };
 
       request.onsuccess = () => {
@@ -95,15 +96,35 @@ export default function App() {
     code: string,
     time: string
   ) => {
+
     const db = await openDB();
 
     const tx =
-      db.transaction(STORE_NAME, "readwrite");
+      db.transaction(
+        STORE_NAME,
+        "readwrite"
+      );
 
-    tx.objectStore(STORE_NAME).add({
-      code,
-      time,
-    });
+    const store =
+      tx.objectStore(
+        STORE_NAME
+      );
+
+    return await new Promise<void>(
+      (resolve, reject) => {
+
+        const req =
+          store.add({
+            code,
+            time,
+          });
+
+        req.onsuccess =
+          () => resolve();
+
+        req.onerror =
+          () => reject(req.error);
+      });
   };
 
   const saveProductionRecord = async (
@@ -131,10 +152,15 @@ export default function App() {
 
         clearReq.onsuccess = () => {
 
-          store.add(data);
+          const addReq = store.add(data);
 
-          resolve();
+          addReq.onsuccess = () => {
+            resolve();
+          };
 
+          addReq.onerror = () => {
+            reject(addReq.error);
+          };
         };
 
         clearReq.onerror =
@@ -364,35 +390,7 @@ export default function App() {
 
   };
 
-  const existsRecord = async (
-    code: string
-  ): Promise<boolean> => {
 
-    const db = await openDB();
-
-    const tx =
-      db.transaction(STORE_NAME, "readonly");
-
-    const store =
-      tx.objectStore(STORE_NAME);
-
-    const request = store.getAll();
-
-    const data = await new Promise<HistoryItem[]>(
-      (resolve, reject) => {
-
-        request.onsuccess =
-          () => resolve(request.result);
-
-        request.onerror =
-          () => reject(request.error);
-      }
-    );
-
-    return data.some(
-      item => item.code === code
-    );
-  };
 
   const exportExcel = () => {
 
@@ -458,12 +456,13 @@ export default function App() {
         new Date().toLocaleString(),
       ],
       [],
-      ["Name", "Type", "Value"],
+      ["Name", "Type", "Value", "Regex"],
 
       ...items.map(item => [
         item.name,
         item.type,
         record[item.name] ?? "",
+        item.regex ?? "",
       ]),
     ];
     const worksheet =
@@ -510,6 +509,76 @@ export default function App() {
 
   };
   
+  const exportProductionCsv =
+    async () => {
+
+      const data =
+        await loadProductionHistory();
+
+      const latest =
+        data.length > 0
+          ? data[data.length - 1]
+          : {};
+
+      const { id, ...record } = latest;
+
+      const csvRows = [
+        ["Name", "Type", "Value", "Regex"],
+        ...items.map(item => [
+          item.name,
+          item.type,
+          record[item.name] ?? "",
+          item.regex ?? "",
+        ]),
+      ];
+
+      const csvText = csvRows
+        .map(row =>
+          row.map(v =>
+            `"${String(v).replace(/"/g, '""')}"`
+          ).join(",")
+        )
+        .join("\r\n");
+
+      const now = new Date();
+
+      const fileName =
+        `production-${
+          now.getFullYear()
+        }${
+          String(now.getMonth() + 1).padStart(2, "0")
+        }${
+          String(now.getDate()).padStart(2, "0")
+        }-${
+          String(now.getHours()).padStart(2, "0")
+        }${
+          String(now.getMinutes()).padStart(2, "0")
+        }.csv`;
+
+      const blob = new Blob(
+        ["\uFEFF" + csvText],
+        {
+          type: "text/csv;charset=utf-8;",
+        }
+      );
+
+      const url =
+        URL.createObjectURL(blob);
+
+      const a =
+        document.createElement("a");
+
+      a.href = url;
+      a.download = fileName;
+
+      playSuccess();
+      vibrateSuccess();
+
+      a.click();
+
+      URL.revokeObjectURL(url);
+  };
+
   const loadExcelConfig = async (
     arrayBuffer: ArrayBuffer
   ) => {
@@ -554,6 +623,7 @@ export default function App() {
           type: String(row[1]) as
             "QR" | "OCR",
           value: String(row[2] ?? ""),
+          regex: String(row[3] ?? ""),
     }));
 
     const defaultResults =
@@ -983,20 +1053,39 @@ export default function App() {
       
       const text = result.getText().trim();
 
+      const now =
+        new Date().toLocaleString();
+
       setResult(text);
 
 
       if (tab === "eval") {
 
-        const exists =
-          await existsRecord(text);
+        try {
 
-        if (exists) {
-          playError();
-          vibrateError();
+          await saveRecord(
+            text,
+            now
+          );
 
-          setResult("⚠ Duplicate: " + text);
-          return;
+        } catch (err) {
+
+          if (
+            err instanceof DOMException &&
+            err.name === "ConstraintError"
+          ) {
+
+            playError();
+            vibrateError();
+
+            setResult(
+              "⚠ Duplicate: " + text
+            );
+
+            return;
+          }
+
+          throw err;
         }
 
       }
@@ -1015,14 +1104,6 @@ export default function App() {
 
         return;
       }
-
-
-      const now = new Date().toLocaleString();
-
-      if (tab === "eval") {
-        await saveRecord(text, now);
-      }
-
 
       if (
         tab === "prod" &&
@@ -1261,7 +1342,7 @@ export default function App() {
             "eng",
             {
               tessedit_char_whitelist:
-              "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+              "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ=",
             } as any
           );
 
@@ -1306,11 +1387,12 @@ export default function App() {
 
       const rawText = bestText;
       
-      const text =
-      rawText
-      .replace(/O/g, "0")
-      .replace(/I/g, "1");
+      const text = rawText;
+
       
+      const now =
+        new Date().toLocaleString();   
+        
       console.log({
       rawText,
       text,
@@ -1334,26 +1416,68 @@ export default function App() {
         document.body.appendChild(cropCanvas);
       }
 
-      if (
-        text.length === 0 ||
-        !/^[0-9A-Z]+$/.test(text)
-      ) {
-        setResult("⚠ OCR Failed");
-        return;
-      }
+      const regex =
+        items[currentIndex]?.regex;
 
-      if (tab === "eval") {
+      if (regex?.trim()) {
 
-        const exists =
-          await existsRecord(text);
+        // Regex指定あり
+        if (!new RegExp(regex).test(text)) {
 
-        if (exists) {
           playError();
           vibrateError();
 
-          setResult("⚠ Duplicate: " + text);
+          setResult(
+            `Format Error : ${text}`
+          );
 
           return;
+        }
+
+      } else {
+
+        // Regex未指定
+        if (
+          text.length === 0 ||
+          !/^[0-9A-Z=]+$/.test(text)
+        ) {
+
+          playError();
+          vibrateError();
+
+          setResult("⚠ OCR Failed");
+
+          return;
+        }
+
+      }
+      if (tab === "eval") {
+
+        try {
+
+          await saveRecord(
+            text,
+            now
+          );
+
+        } catch (err) {
+
+          if (
+            err instanceof DOMException &&
+            err.name === "ConstraintError"
+          ) {
+
+            playError();
+            vibrateError();
+
+            setResult(
+              "⚠ Duplicate: " + text
+            );
+
+            return;
+          }
+
+          throw err;
         }
 
       }
@@ -1371,13 +1495,6 @@ export default function App() {
         );
 
         return;
-      }
-
-
-      const now = new Date().toLocaleString();
-
-      if (tab === "eval") {
-        await saveRecord(text, now);
       }
 
 
@@ -1489,7 +1606,7 @@ export default function App() {
     oscillator.type = "sine";
     oscillator.frequency.value = 1200;
 
-    gain.gain.value = 0.1;
+    gain.gain.value = 0.3;
 
     oscillator.connect(gain);
     gain.connect(audioContext.destination);
@@ -2354,85 +2471,93 @@ export default function App() {
           />
         </div>
 
-        {/* Top Buttons */}
+          {/* Top Buttons */}
 
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            marginBottom: "10px",
-          }}
-        >
-        <button
-          style={{
-            flex: 1,
-            height: "50px",
-            cursor: "pointer",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-          }}
-          onPointerDown={() => {
-            longPressTriggered.current = false;
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              marginBottom: "10px",
+            }}
+          >
+          <button
+            style={{
+              flex: 1,
+              height: "50px",
+              cursor: "pointer",
+              userSelect: "none",
+              WebkitUserSelect: "none",
+            }}
 
-            pressTimer.current = window.setTimeout(
-              async () => {
-                longPressTriggered.current = true;
+            onPointerDown={() => {
 
-                const response = await fetch(
-                  "/config/default.xlsx"
-                );
+              loadLongPressTriggered.current = false;
 
-                const buffer =
-                  await response.arrayBuffer();
+              pressTimer.current = window.setTimeout(
+                async () => {
 
-                await loadExcelConfig(buffer);
+                  loadLongPressTriggered.current = true;
 
-                playSuccess();
-                vibrateSuccess();
+                  const response = await fetch(
+                    "/config/default.xlsx"
+                  );
 
-                setResult(
-                  "Default Config Loaded"
-                );
-              },
-              1500
-            );
-          }}
+                  const buffer =
+                    await response.arrayBuffer();
 
-          onPointerUp={() => {
+                  await loadExcelConfig(buffer);
 
-            if (pressTimer.current) {
-              clearTimeout(pressTimer.current);
-            }
+                  playSuccess();
+                  vibrateSuccess();
 
-            if (longPressTriggered.current) {
-              return;
-            }
+                  setResult(
+                    "Default Config Loaded"
+                  );
 
-            if (clickTimer.current) {
+                },
+                1500
+              );
+            }}
 
-              clearTimeout(clickTimer.current);
-              clickTimer.current = null;
+            onPointerUp={() => {
 
-              loadFromOneDrive();
+              if (pressTimer.current) {
+                clearTimeout(pressTimer.current);
+              }
 
-              return;
-            }
+              if (loadLongPressTriggered.current) {
 
-            clickTimer.current = window.setTimeout(
-              () => {
+                loadLongPressTriggered.current = false;
+                return;
 
+              }
+
+              if (clickTimer.current) {
+
+                clearTimeout(clickTimer.current);
                 clickTimer.current = null;
 
-                fileInputRef.current?.click();
+                loadFromOneDrive();
 
-              },
-              300
-            );
-          }}
+                return;
+              }
 
-        >
-          LOAD
-        </button>
+              clickTimer.current = window.setTimeout(
+                () => {
+
+                  clickTimer.current = null;
+
+                  fileInputRef.current?.click();
+
+                },
+                300
+              );
+
+            }}
+
+          >
+            LOAD
+          </button>
 
           <button
             style={{
@@ -2442,7 +2567,50 @@ export default function App() {
               userSelect: "none",
               WebkitUserSelect: "none",
             }}
-            onClick={exportProductionExcel}
+
+            onClick={() => {
+
+              if (exportLongPressTriggered.current) {
+
+                exportLongPressTriggered.current = false;
+                return;
+
+              }
+
+              exportProductionExcel();
+
+            }}
+
+            onPointerDown={() => {
+
+              exportLongPressTriggered.current = false;
+
+              pressTimer.current =
+                window.setTimeout(() => {
+
+                  exportLongPressTriggered.current = true;
+
+                  exportProductionCsv();
+
+                }, 1500);
+
+            }}
+
+            onPointerUp={() => {
+              if (pressTimer.current) {
+                clearTimeout(
+                  pressTimer.current
+                );
+              }
+            }}
+
+            onPointerLeave={() => {
+              if (pressTimer.current) {
+                clearTimeout(
+                  pressTimer.current
+                );
+              }
+            }}
           >
             EXPORT
           </button>
