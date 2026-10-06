@@ -524,7 +524,13 @@ export default function App() {
       const { id, ...record } = latest;
 
       const csvRows = [
+        [
+          "Export Time",
+          new Date().toLocaleString(),
+        ],
+        [],
         ["Name", "Type", "Value", "Regex"],
+
         ...items.map(item => [
           item.name,
           item.type,
