@@ -2178,7 +2178,7 @@ export default function App() {
           textAlign: "center",
         }}
       >
-        Build: {BUILD_DATE}
+        Build: {BUILD_DATE} JST
       </div>      
 
     </>

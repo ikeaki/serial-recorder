@@ -6,7 +6,8 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   define: {
     __BUILD_DATE__: JSON.stringify(
-      new Date().toLocaleString("ja-JP", {
+      new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -15,8 +16,11 @@ export default defineConfig({
         second: "2-digit",
         hour12: false,
       })
+        .format(new Date())
+        .replace(/\//g, "-")
     ),
   },
+
 
   plugins: [
     react(),
