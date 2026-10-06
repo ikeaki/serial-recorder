@@ -1808,6 +1808,28 @@ export default function App() {
         </span>
       </div>
 
+
+      {/* 左下 REGEX等 */}
+      <div
+        style={{
+          position: "absolute",
+          left: "6px",
+          bottom: "0px",
+
+          color: "white",
+          fontSize: "12px",
+          fontWeight: "bold",
+
+          textShadow:
+            "1px 1px 2px black, -1px -1px 2px black",
+
+          pointerEvents: "none",
+        }}
+      >
+        {`RGX: ${items[currentIndex]?.regex || "OFF"}`}
+      </div>
+
+      {/* 右下 Zoom等 */}
       <div
         style={{
           position: "absolute",
