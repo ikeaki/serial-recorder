@@ -4,14 +4,10 @@ import * as XLSX from "xlsx";
 import { createWorker } from "tesseract.js";
 
 const DB_NAME = "serial-db";
-const STORE_NAME = "history";
+
 const PROD_STORE_NAME = "production";
 const BUILD_DATE = __BUILD_DATE__;
 
-type HistoryItem = {
-  code: string;
-  time: string;
-};
 
 type ScanItem = {
   name: string;
@@ -26,7 +22,6 @@ export default function App() {
   const workerRef = useRef<any>(null);
   const [ocrReady, setOcrReady] = useState(false);
   const [result, setResult] = useState("Not Scanned");
-  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [scanHeight, setScanHeight] = useState(30);
@@ -45,28 +40,17 @@ export default function App() {
   const isMobile = window.innerWidth <= 768;
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
-  const clickTimer = useRef<number | null>(null);
 
-  const loadLongPressTriggered = useRef(false);
   const exportLongPressTriggered = useRef(false);
 
 
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 3);
+      const request = indexedDB.open(DB_NAME, 4);
 
       request.onupgradeneeded = () => {
 
         const db = request.result;
-
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(
-            STORE_NAME,
-            {
-              keyPath: "code",
-            }
-          );
-        }
 
         if (
           !db.objectStoreNames.contains(
@@ -91,41 +75,6 @@ export default function App() {
         reject(request.error);
       };
     });
-  };
-
-  const saveRecord = async (
-    code: string,
-    time: string
-  ) => {
-
-    const db = await openDB();
-
-    const tx =
-      db.transaction(
-        STORE_NAME,
-        "readwrite"
-      );
-
-    const store =
-      tx.objectStore(
-        STORE_NAME
-      );
-
-    return await new Promise<void>(
-      (resolve, reject) => {
-
-        const req =
-          store.add({
-            code,
-            time,
-          });
-
-        req.onsuccess =
-          () => resolve();
-
-        req.onerror =
-          () => reject(req.error);
-      });
   };
 
   const saveProductionRecord = async (
@@ -173,29 +122,6 @@ export default function App() {
   };
   
 
-  const loadHistory = async () => {
-    const db = await openDB();
-
-    const tx =
-      db.transaction(STORE_NAME, "readonly");
-
-    const store =
-      tx.objectStore(STORE_NAME);
-
-    const request =
-      store.getAll();
-
-    return await new Promise<HistoryItem[]>(
-      (resolve, reject) => {
-        request.onsuccess =
-          () => resolve(request.result);
-
-        request.onerror =
-          () => reject(request.error);
-      }
-    );
-  };
-
   const loadProductionHistory =
     async () => {
 
@@ -212,7 +138,7 @@ export default function App() {
         .objectStore(
           PROD_STORE_NAME
         )
-        .getAll();
+        .getAllKeys();
 
     return await new Promise<any[]>(
       (resolve, reject) => {
@@ -335,24 +261,6 @@ export default function App() {
       });
 
   }, []);
-
-  const clearHistoryDB = async () => {
-    const db = await openDB();
-
-    const tx =
-      db.transaction(STORE_NAME, "readwrite");
-
-    tx.objectStore(STORE_NAME).clear();
-  };
-
-  const clearHistory = async () => {
-
-    playError();
-    vibrateError();
-
-    setHistory([]);
-    await clearHistoryDB();
-  };
   
   const clearProductionDB = async () => {
 
@@ -391,52 +299,6 @@ export default function App() {
 
   };
 
-
-
-  const exportExcel = () => {
-
-    const data = history.map(item => ({
-      日時: item.time,
-      コード: item.code,
-    }));
-
-    const worksheet =
-      XLSX.utils.json_to_sheet(
-        data
-      );
-
-    const workbook =
-      XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      "履歴"
-    );
-
-
-    const now = new Date();
-
-    const fileName =
-      `serial-history-${
-        now.getFullYear()
-      }${
-        String(now.getMonth() + 1).padStart(2, "0")
-      }${
-        String(now.getDate()).padStart(2, "0")
-      }-${
-        String(now.getHours()).padStart(2, "0")
-      }${
-        String(now.getMinutes()).padStart(2, "0")
-      }${
-        String(now.getSeconds()).padStart(2, "0")
-      }.xlsx`;
-
-    XLSX.writeFile(
-      workbook,
-      fileName
-    );
-  };
 
   const exportProductionExcel =
     async () => {
@@ -798,14 +660,6 @@ export default function App() {
     startCamera();
   }, []);
 
-  useEffect(() => {
-    loadHistory()
-      .then(data => {
-        setHistory(
-          [...data].reverse()
-        );
-      });
-  }, []);
 
   useEffect(() => {
     let animationId: number;
@@ -1060,41 +914,12 @@ export default function App() {
       
       const text = result.getText().trim();
 
-      const now =
-        new Date().toLocaleString();
-
-      setResult(text);
-
 
       if (tab === "eval") {
-
-        try {
-
-          await saveRecord(
-            text,
-            now
-          );
-
-        } catch (err) {
-
-          if (
-            err instanceof DOMException &&
-            err.name === "ConstraintError"
-          ) {
-
-            playError();
-            vibrateError();
-
-            setResult(
-              "⚠ Duplicate: " + text
-            );
-
-            return;
-          }
-
-          throw err;
-        }
-
+        setResult(text);
+        playSuccess();
+        vibrateSuccess();
+        return;
       }
 
       if (
@@ -1146,17 +971,6 @@ export default function App() {
       playSuccess();
       vibrateSuccess();
 
-      setHistory(prev => {
-        const newHistory = [
-          {
-            code: text,
-            time: now,
-          },
-          ...prev,
-        ];
-
-        return newHistory;
-      });
       
     } catch (err) {
 
@@ -1396,9 +1210,6 @@ export default function App() {
       
       const text = rawText;
 
-      
-      const now =
-        new Date().toLocaleString();   
         
       console.log({
       rawText,
@@ -1458,35 +1269,12 @@ export default function App() {
         }
 
       }
+
       if (tab === "eval") {
-
-        try {
-
-          await saveRecord(
-            text,
-            now
-          );
-
-        } catch (err) {
-
-          if (
-            err instanceof DOMException &&
-            err.name === "ConstraintError"
-          ) {
-
-            playError();
-            vibrateError();
-
-            setResult(
-              "⚠ Duplicate: " + text
-            );
-
-            return;
-          }
-
-          throw err;
-        }
-
+        setResult(text);
+        playSuccess();
+        vibrateSuccess();
+        return;
       }
 
       if (
@@ -1504,14 +1292,6 @@ export default function App() {
         return;
       }
 
-
-      setHistory(prev => [
-        {
-          code: text,
-          time: now,
-        },
-        ...prev,
-      ]);
 
       playSuccess();
       vibrateSuccess();
@@ -2111,70 +1891,7 @@ export default function App() {
           marginTop: "10px",
         }}
       >
-        <button
-          style={{
-            flex: 1,
-            height: "60px",
-            fontSize: "18px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-          }}
-          onClick={exportExcel}
-        >
-          Export
-        </button>
-
-        <button
-          style={{
-            flex: 1,
-            height: "60px",
-            fontSize: "18px",
-            backgroundColor: "#ccc",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-          }}
-          onPointerDown={() => {
-            pressTimer.current = window.setTimeout(
-              clearHistory,
-              1500
-            );
-          }}
-          onPointerUp={() => {
-            if (pressTimer.current) {
-              clearTimeout(pressTimer.current);
-            }
-          }}
-          onPointerLeave={() => {
-            if (pressTimer.current) {
-              clearTimeout(pressTimer.current);
-            }
-          }}
-        >
-          Hold to Clear
-        </button>
-
       </div>
-
-      <h2>History ({history.length} items)</h2>
-
-      {history.length === 0 ? (
-        <p>No history</p>
-      ) : (
-        <ul>
-          {history.map((item, index) => (
-              <li
-                key={index}
-                style={{
-                  textAlign: "left",
-                  marginBottom: "10px",
-                }}
-              >
-              <div>{item.time}</div>
-              <div>{item.code}</div>
-            </li>
-          ))}
-        </ul>
-      )}
 
       <div
         style={{
@@ -2521,72 +2238,30 @@ export default function App() {
               WebkitUserSelect: "none",
             }}
 
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
+
             onPointerDown={() => {
+              pressTimer.current =
+                window.setTimeout(async () => {
 
-              loadLongPressTriggered.current = false;
+                  await loadFromOneDrive();
 
-              pressTimer.current = window.setTimeout(
-                async () => {
-
-                  loadLongPressTriggered.current = true;
-
-                  const response = await fetch(
-                    "/config/default.xlsx"
-                  );
-
-                  const buffer =
-                    await response.arrayBuffer();
-
-                  await loadExcelConfig(buffer);
-
-                  playSuccess();
-                  vibrateSuccess();
-
-                  setResult(
-                    "Default Config Loaded"
-                  );
-
-                },
-                1500
-              );
+                }, 1500);
             }}
 
             onPointerUp={() => {
-
               if (pressTimer.current) {
                 clearTimeout(pressTimer.current);
               }
-
-              if (loadLongPressTriggered.current) {
-
-                loadLongPressTriggered.current = false;
-                return;
-
-              }
-
-              if (clickTimer.current) {
-
-                clearTimeout(clickTimer.current);
-                clickTimer.current = null;
-
-                loadFromOneDrive();
-
-                return;
-              }
-
-              clickTimer.current = window.setTimeout(
-                () => {
-
-                  clickTimer.current = null;
-
-                  fileInputRef.current?.click();
-
-                },
-                300
-              );
-
             }}
 
+            onPointerLeave={() => {
+              if (pressTimer.current) {
+                clearTimeout(pressTimer.current);
+              }
+            }}
           >
             LOAD
           </button>
