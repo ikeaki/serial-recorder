@@ -138,7 +138,7 @@ export default function App() {
         .objectStore(
           PROD_STORE_NAME
         )
-        .getAllKeys();
+        .getAll();
 
     return await new Promise<any[]>(
       (resolve, reject) => {
