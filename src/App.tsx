@@ -992,25 +992,40 @@ export default function App() {
       vibrateSuccess();
 
       
-    } catch (err) {
+      } catch (err) {
 
-    if (
-      err instanceof Error &&
-      err.message === "timeout"
-    ) {
+        if (
+          err instanceof Error &&
+          err.message === "timeout"
+        ) {
 
-      showOverlay("✕ QR","#ff0000");
+          showOverlay(
+            "✕ QR",
+            "#ff0000"
+          );
 
-      playError();
-      vibrateError();
+          playError();
+          vibrateError();
 
-      setResult("Scan Timeout");
+          setResult("Scan Timeout");
 
-      return;
-    }
+          return;
+        }
 
-      console.error(err);
-    }
+        console.error(err);
+
+        showOverlay(
+          "✕ QR",
+          "#ff0000"
+        );
+
+        playError();
+        vibrateError();
+
+        setResult("QR Not Found");
+
+      }
+
     finally {
       setScanning(false);
     }
