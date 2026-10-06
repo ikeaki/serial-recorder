@@ -284,7 +284,17 @@ export default function App() {
 
     // UIもクリア
     setResults({});
-    setCurrentIndex(0);
+    const startIndex =
+      items.findIndex(
+        item =>
+          ![
+            "ConfigURL",
+            "Export Time",
+            "Model",
+          ].includes(item.name)
+      );
+
+    setCurrentIndex(startIndex);
 
     const response =
       await fetch(
@@ -320,20 +330,23 @@ export default function App() {
     const { id, ...record } = latest;
 
     const exportData = [
-      [
-        "Export Time",
-        new Date().toLocaleString(),
-      ],
-      [],
       ["Name", "Type", "Value", "Regex"],
 
       ...items.map(item => [
+
         item.name,
+
         item.type,
-        record[item.name] ?? "",
+
+        item.name === "Export Time"
+          ? new Date().toLocaleString()
+          : (record[item.name] ?? ""),
+
         item.regex ?? "",
+
       ]),
     ];
+
     const worksheet =
       XLSX.utils.aoa_to_sheet(
         exportData
@@ -392,18 +405,20 @@ export default function App() {
       const { id, ...record } = latest;
 
       const csvRows = [
-        [
-          "Export Time",
-          new Date().toLocaleString(),
-        ],
-        [],
         ["Name", "Type", "Value", "Regex"],
 
         ...items.map(item => [
+
           item.name,
+
           item.type,
-          record[item.name] ?? "",
+
+          item.name === "Export Time"
+            ? new Date().toLocaleString()
+            : (record[item.name] ?? ""),
+
           item.regex ?? "",
+
         ]),
       ];
 
@@ -511,7 +526,17 @@ export default function App() {
 
     setItems(items);
     setResults(defaultResults);
-    setCurrentIndex(0);
+    const startIndex =
+      items.findIndex(
+        item =>
+          ![
+            "ConfigURL",
+            "Export Time",
+            "Model",
+          ].includes(item.name)
+      );
+
+    setCurrentIndex(startIndex);
 
     await saveProductionRecord({
     configItems: items,
@@ -547,17 +572,22 @@ export default function App() {
 
   const progressCount = items.filter(
     item =>
-      !["Model", "ConfigURL"].includes(
-        item.name
-      ) &&
+      ![
+        "Model",
+        "ConfigURL",
+        "Export Time",
+      ].includes(item.name)
+       &&
       (results[item.name] ?? "").trim() !== ""
   ).length;
 
   const totalCount = items.filter(
     item =>
-      !["Model", "ConfigURL"].includes(
-        item.name
-      )
+    ![
+      "Model",
+      "ConfigURL",
+      "Export Time",
+    ].includes(item.name)
   ).length;
 
   const showOverlay = (
