@@ -46,6 +46,8 @@ export default function App() {
   const [overlayMessage, setOverlayMessage] = useState("");
 
   const [overlayColor, setOverlayColor] = useState("#00ff00");
+  const lastBeepRef = useRef(0);
+  const lastErrorBeepRef = useRef(0);
 
 
   const openDB = (): Promise<IDBDatabase> => {
@@ -1243,7 +1245,8 @@ export default function App() {
       
       if (bestConfidence < 50) {
         showOverlay("✕ OCR", "#ff0000");
-
+        playError();
+        vibrateError();
         setResult(
         `⚠ OCR Failed (${bestConfidence.toFixed(0)}%)`
         );
@@ -1434,6 +1437,18 @@ export default function App() {
   };
     
   const playSuccess = () => {
+
+    const now = Date.now();
+
+    // 200ms以内の連続再生を無視
+    if (
+      now - lastBeepRef.current < 200
+    ) {
+      return;
+    }
+
+    lastBeepRef.current = now;
+
     const audioContext = new AudioContext();
 
     const oscillator =
@@ -1459,6 +1474,18 @@ export default function App() {
   };
 
   const playError = () => {
+
+    const now = Date.now();
+
+    // 200ms以内の連続再生を無視
+    if (
+      now - lastErrorBeepRef.current < 200
+    ) {
+      return;
+    }
+
+    lastErrorBeepRef.current = now;
+
     const audioContext = new AudioContext();
 
     const oscillator =
@@ -1481,6 +1508,7 @@ export default function App() {
       oscillator.stop();
       audioContext.close();
     }, 150);
+
   };
 
   const vibrateSuccess = () => {
