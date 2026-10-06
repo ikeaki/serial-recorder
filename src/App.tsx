@@ -237,6 +237,11 @@ export default function App() {
             const nextIndex =
               configItems.findIndex(
                 (item: ScanItem) =>
+                  ![
+                    "ConfigURL",
+                    "Export Time",
+                    "Model",
+                  ].includes(item.name) &&
                   !(scanData[item.name] ?? "")
                     .toString()
                     .trim()
@@ -2008,7 +2013,11 @@ export default function App() {
             userSelect: "none",
             WebkitUserSelect: "none",
           }}
-          disabled={scanning}
+          disabled={
+            scanning ||
+            ocrLoading
+          }
+
           onClick={scanQr}
         >
           {scanning ? "Scanning..." : "Scan QR/Barcode"}
@@ -2022,7 +2031,11 @@ export default function App() {
             userSelect: "none",
             WebkitUserSelect: "none",
           }}
-          disabled={ocrLoading || !ocrReady}
+          disabled={
+          scanning ||
+          ocrLoading ||
+          !ocrReady
+          }
           onClick={runOCR}
         >
           {ocrLoading
