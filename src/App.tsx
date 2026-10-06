@@ -37,6 +37,7 @@ export default function App() {
   const lastExportClick = useRef(0);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
@@ -762,6 +763,18 @@ export default function App() {
       setOverlayMessage("");
     }, 1500);
 
+  };
+
+  const getAudioContext = () => {
+
+    if (!audioContextRef.current) {
+
+      audioContextRef.current =
+        new AudioContext();
+
+    }
+
+    return audioContextRef.current;
   };
 
   useEffect(() => {
@@ -1630,7 +1643,6 @@ export default function App() {
 
     const now = Date.now();
 
-    // 200ms以内の連続再生を無視
     if (
       now - lastBeepRef.current < 200
     ) {
@@ -1639,7 +1651,8 @@ export default function App() {
 
     lastBeepRef.current = now;
 
-    const audioContext = new AudioContext();
+    const audioContext =
+      getAudioContext();
 
     const oscillator =
       audioContext.createOscillator();
@@ -1657,17 +1670,15 @@ export default function App() {
 
     oscillator.start();
 
-    setTimeout(() => {
-      oscillator.stop();
-      audioContext.close();
-    }, 100);
+    oscillator.stop(
+      audioContext.currentTime + 0.1
+    );
   };
 
   const playError = () => {
 
     const now = Date.now();
 
-    // 200ms以内の連続再生を無視
     if (
       now - lastErrorBeepRef.current < 200
     ) {
@@ -1676,7 +1687,8 @@ export default function App() {
 
     lastErrorBeepRef.current = now;
 
-    const audioContext = new AudioContext();
+    const audioContext =
+      getAudioContext();
 
     const oscillator =
       audioContext.createOscillator();
@@ -1694,11 +1706,9 @@ export default function App() {
 
     oscillator.start();
 
-    setTimeout(() => {
-      oscillator.stop();
-      audioContext.close();
-    }, 150);
-
+    oscillator.stop(
+      audioContext.currentTime + 0.15
+    );
   };
 
   const vibrateSuccess = () => {
