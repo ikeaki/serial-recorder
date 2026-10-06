@@ -2170,16 +2170,16 @@ export default function App() {
         </ul>
       )}
 
-    <div
-      style={{
-        marginTop: "20px",
-        fontSize: "12px",
-        color: "#888",
-        textAlign: "center",
-      }}
-    >
-      Build: {BUILD_DATE}
-    </div>      
+      <div
+        style={{
+          marginTop: "20px",
+          fontSize: "12px",
+          color: "#888",
+          textAlign: "center",
+        }}
+      >
+        Build: {BUILD_DATE}
+      </div>      
 
     </>
     )}
