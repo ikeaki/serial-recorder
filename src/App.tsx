@@ -43,6 +43,10 @@ export default function App() {
 
   const exportLongPressTriggered = useRef(false);
 
+  const [overlayMessage, setOverlayMessage] = useState("");
+
+  const [overlayColor, setOverlayColor] = useState("#00ff00");
+
 
   const openDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -554,6 +558,19 @@ export default function App() {
       )
   ).length;
 
+  const showOverlay = (
+    message: string,
+    color: string = "#00ff00"
+  ) => {
+
+    setOverlayMessage(message);
+    setOverlayColor(color);
+
+    setTimeout(() => {
+      setOverlayMessage("");
+    }, 1500);
+
+  };
 
   useEffect(() => {
 
@@ -916,6 +933,7 @@ export default function App() {
 
 
       if (tab === "eval") {
+        showOverlay("✓ OK", "#00ff00");
         setResult(text);
         playSuccess();
         vibrateSuccess();
@@ -929,6 +947,8 @@ export default function App() {
 
         playError();
         vibrateError();
+
+        showOverlay("✕ DUP", "#ff0000");
 
         setResult(
           "⚠ Duplicate In Current Unit"
@@ -967,7 +987,7 @@ export default function App() {
         );
       }
 
-
+      showOverlay("✓ OK", "#00ff00");
       playSuccess();
       vibrateSuccess();
 
@@ -979,6 +999,7 @@ export default function App() {
         err.message === "timeout"
       ) {
         setResult("Scan Timeout");
+        showOverlay("TIMEOUT", "#ffff00");
         return;
       }
 
@@ -1245,6 +1266,8 @@ export default function App() {
           playError();
           vibrateError();
 
+          showOverlay("✕ FORMAT", "#ff0000");
+
           setResult(
             `Format Error : ${text}`
           );
@@ -1260,6 +1283,8 @@ export default function App() {
           !/^[0-9A-Z=]+$/.test(text)
         ) {
 
+          showOverlay("✕ OCR", "#ff0000");
+
           playError();
           vibrateError();
 
@@ -1272,6 +1297,7 @@ export default function App() {
 
       if (tab === "eval") {
         setResult(text);
+        showOverlay("✓ OK", "#00ff00");
         playSuccess();
         vibrateSuccess();
         return;
@@ -1285,6 +1311,8 @@ export default function App() {
         playError();
         vibrateError();
 
+        showOverlay("✕ DUP", "#ff0000");
+
         setResult(
           "⚠ Duplicate In Current Unit"
         );
@@ -1292,6 +1320,7 @@ export default function App() {
         return;
       }
 
+      showOverlay("✓ OK", "#00ff00");
 
       playSuccess();
       vibrateSuccess();
@@ -1749,6 +1778,37 @@ export default function App() {
 
         }}
       />
+
+      {
+        overlayMessage && (
+          <div
+            style={{
+              position: "absolute",
+
+              left: "50%",
+              top: "50%",
+
+              transform:
+                "translate(-50%, -50%)",
+
+              color: overlayColor,
+
+              fontSize: "48px",
+              fontWeight: "bold",
+
+              textShadow:
+                "2px 2px 4px black",
+
+              pointerEvents: "none",
+
+              zIndex: 999,
+            }}
+          >
+            {overlayMessage}
+          </div>
+        )
+      }
+
       <div
         style={{
           position: "absolute",
