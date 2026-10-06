@@ -994,14 +994,20 @@ export default function App() {
       
     } catch (err) {
 
-      if (
-        err instanceof Error &&
-        err.message === "timeout"
-      ) {
-        setResult("Scan Timeout");
-        showOverlay("TIMEOUT", "#ffff00");
-        return;
-      }
+    if (
+      err instanceof Error &&
+      err.message === "timeout"
+    ) {
+
+      showOverlay("✕ QR","#ff0000");
+
+      playError();
+      vibrateError();
+
+      setResult("Scan Timeout");
+
+      return;
+    }
 
       console.error(err);
     }
@@ -1221,6 +1227,8 @@ export default function App() {
       }
       
       if (bestConfidence < 50) {
+        showOverlay("✕ OCR", "#ff0000");
+
         setResult(
         `⚠ OCR Failed (${bestConfidence.toFixed(0)}%)`
         );
