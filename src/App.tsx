@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import * as XLSX from "xlsx";
 import { createWorker } from "tesseract.js";
+import ExcelJS from "exceljs";
+import QRCode from "qrcode";
 
 const DB_NAME = "serial-db";
 
@@ -31,6 +33,8 @@ export default function App() {
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ScanItem[]>([]);
+
+  const lastExportClick = useRef(0);
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -341,7 +345,7 @@ export default function App() {
 
         item.name,
 
-        item.type,
+        item.type ?? "",
 
         item.name === "Export Time"
           ? new Date().toLocaleString()
@@ -368,34 +372,181 @@ export default function App() {
 
     const now = new Date();
 
+    const model =
+      (results["Model"] ?? "Production")
+        .replace(/[\\/:*?"<>|]/g, "_");
+
     const fileName =
-      `production-${
+      `${model}-${
         now.getFullYear()
       }${
-        String(
-          now.getMonth() + 1
-        ).padStart(2, "0")
+        String(now.getMonth() + 1).padStart(2, "0")
       }${
-        String(
-          now.getDate()
-        ).padStart(2, "0")
+        String(now.getDate()).padStart(2, "0")
       }-${
-        String(
-          now.getHours()
-        ).padStart(2, "0")
+        String(now.getHours()).padStart(2, "0")
       }${
-        String(
-          now.getMinutes()
-        ).padStart(2, "0")
+        String(now.getMinutes()).padStart(2, "0")
       }.xlsx`;
 
-    XLSX.writeFile(
-      workbook,
-      fileName
+      XLSX.writeFile(
+        workbook,
+        fileName
+      );
+
+    };
+  
+  const exportProductionExcelWithQr = async () => {
+
+    const workbook = new ExcelJS.Workbook();
+
+    const sheet =
+      workbook.addWorksheet("Production");
+
+    sheet.columns = [
+      {
+        header: "Name",
+        key: "name",
+        width: 25,
+      },
+      {
+        header: "Type",
+        key: "type",
+        width: 10,
+      },
+      {
+        header: "Value",
+        key: "value",
+        width: 35,
+      },
+      {
+        header: "Regex",
+        key: "regex",
+        width: 35,
+      },
+      {
+        header: "QR",
+        key: "qr",
+        width: 15,
+      },
+    ];
+
+    for (let i = 0; i < items.length; i++) {
+
+      const item = items[i];
+
+      const value =
+        item.name === "Export Time"
+          ? new Date().toLocaleString()
+          : (results[item.name] ?? "");
+
+      sheet.addRow([
+        item.name,
+        item.type ?? "",
+        value,
+        item.regex ?? "",
+        "",
+      ]);
+
+      const row = sheet.getRow(i + 2);
+      row.height = 65;
+
+      if (!String(value).trim()) {
+        continue;
+      }
+
+      try {
+
+        const qrBase64 =
+          await QRCode.toDataURL(
+            String(value),
+            {
+              margin: 1,
+              width: 200,
+            }
+          );
+
+        const imageId =
+          workbook.addImage({
+            base64: qrBase64,
+            extension: "png",
+          });
+
+        sheet.addImage(imageId, {
+          tl: {
+            col: 4,
+            row: i + 1,
+          },
+          ext: {
+            width: 60,
+            height: 60,
+          },
+        });
+
+      } catch (err) {
+
+        console.error(
+          "QR Create Error:",
+          value,
+          err
+        );
+
+      }
+    }
+
+    sheet.getRow(1).font = {
+      bold: true,
+    };
+
+    const buffer =
+      await workbook.xlsx.writeBuffer();
+
+    const blob = new Blob(
+      [buffer],
+      {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }
     );
 
+    const now = new Date();
+
+    const model =
+      (results["Model"] ?? "Production")
+        .replace(/[\\/:*?"<>|]/g, "_");
+
+    const fileName =
+      `${model}-QR-${
+        now.getFullYear()
+      }${
+        String(now.getMonth() + 1).padStart(2, "0")
+      }${
+        String(now.getDate()).padStart(2, "0")
+      }-${
+        String(now.getHours()).padStart(2, "0")
+      }${
+        String(now.getMinutes()).padStart(2, "0")
+      }.xlsx`;
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const a =
+      document.createElement("a");
+
+    a.href = url;
+    a.download = fileName;
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+
+    playSuccess();
+    vibrateSuccess();
   };
-  
+
   const exportProductionCsv =
     async () => {
 
@@ -416,7 +567,7 @@ export default function App() {
 
           item.name,
 
-          item.type,
+          item.type ?? "",
 
           item.name === "Export Time"
             ? new Date().toLocaleString()
@@ -437,8 +588,12 @@ export default function App() {
 
       const now = new Date();
 
+      const model =
+        (results["Model"] ?? "Production")
+          .replace(/[\\/:*?"<>|]/g, "_");
+
       const fileName =
-        `production-${
+        `${model}-${
           now.getFullYear()
         }${
           String(now.getMonth() + 1).padStart(2, "0")
@@ -2454,14 +2609,29 @@ export default function App() {
             onClick={() => {
 
               if (exportLongPressTriggered.current) {
-
                 exportLongPressTriggered.current = false;
                 return;
-
               }
 
-              exportProductionExcel();
+              const now = Date.now();
 
+              if (
+                now - lastExportClick.current < 400
+              ) {
+                exportProductionExcelWithQr();
+                lastExportClick.current = 0;
+                return;
+              }
+
+              lastExportClick.current = now;
+
+              setTimeout(() => {
+                if (
+                  lastExportClick.current === now
+                ) {
+                  exportProductionExcel();
+                }
+              }, 400);
             }}
 
             onPointerDown={() => {

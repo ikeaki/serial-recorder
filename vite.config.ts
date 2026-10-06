@@ -34,6 +34,11 @@ export default defineConfig({
       "config/default.xlsx"
       ],
 
+       workbox: {
+          maximumFileSizeToCacheInBytes:
+            10 * 1024 * 1024,
+      },
+
       manifest: {
         name: "Serial Recorder",
         short_name: "Serial",
