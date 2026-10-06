@@ -6,6 +6,7 @@ import { createWorker } from "tesseract.js";
 const DB_NAME = "serial-db";
 const STORE_NAME = "history";
 const PROD_STORE_NAME = "production";
+const BUILD_DATE = __BUILD_DATE__;
 
 type HistoryItem = {
   code: string;
@@ -2168,6 +2169,18 @@ export default function App() {
           ))}
         </ul>
       )}
+
+    <div
+      style={{
+        marginTop: "20px",
+        fontSize: "12px",
+        color: "#888",
+        textAlign: "center",
+      }}
+    >
+      Build: {BUILD_DATE}
+    </div>      
+
     </>
     )}
 
@@ -2443,6 +2456,9 @@ export default function App() {
           zIndex: 1000,
 
           boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
+
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <div
@@ -2470,6 +2486,16 @@ export default function App() {
             }}
           />
         </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minHeight: 0,
+            padding: "10px",
+          }}
+        >
 
           {/* Top Buttons */}
 
@@ -2659,11 +2685,15 @@ export default function App() {
             style={{
               border: "1px solid #ccc",
               borderRadius: "8px",
-              maxHeight: "250px",
+
+              flex: 1,
+              minHeight: 0,
+
               overflowY: "auto",
               padding: "10px",
             }}
           >
+
             {items.map((item, index) => {
 
               const completed =
@@ -2754,6 +2784,8 @@ export default function App() {
                 </div>
               );
             })}
+
+          </div>  
           </div>
 
         </div>
