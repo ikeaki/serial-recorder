@@ -13,7 +13,7 @@ const BUILD_DATE = __BUILD_DATE__;
 
 type ScanItem = {
   name: string;
-  type: "QR" | "OCR";
+  type?: string;
   value?: string;
   regex?: string;
 };
@@ -340,20 +340,16 @@ export default function App() {
     const { id, ...record } = latest;
 
     const exportData = [
-      ["Name", "Type", "Value", "Regex"],
+      ["Name", "Type", "Regex", "Value"],
 
       ...items.map(item => [
 
-        item.name,
-
-        item.type ?? "",
-
-        item.name === "Export Time"
-          ? new Date().toLocaleString()
-          : (record[item.name] ?? ""),
-
-        item.regex ?? "",
-
+          item.name,
+          item.type ?? "",
+          item.regex ?? "",
+          item.name === "Export Time"
+            ? new Date().toLocaleString()
+            : (record[item.name] ?? ""),
       ]),
     ];
 
@@ -416,13 +412,13 @@ export default function App() {
         width: 10,
       },
       {
-        header: "Value",
-        key: "value",
+        header: "Regex",
+        key: "regex",
         width: 35,
       },
       {
-        header: "Regex",
-        key: "regex",
+        header: "Value",
+        key: "value",
         width: 35,
       },
       {
@@ -444,8 +440,8 @@ export default function App() {
       sheet.addRow([
         item.name,
         item.type ?? "",
-        value,
         item.regex ?? "",
+        value,
         "",
       ]);
 
@@ -562,20 +558,15 @@ export default function App() {
       const { id, ...record } = latest;
 
       const csvRows = [
-        ["Name", "Type", "Value", "Regex"],
+        ["Name", "Type", "Regex", "Value"],
 
         ...items.map(item => [
-
-          item.name,
-
-          item.type ?? "",
-
-          item.name === "Export Time"
-            ? new Date().toLocaleString()
-            : (record[item.name] ?? ""),
-
-          item.regex ?? "",
-
+            item.name,
+            item.type ?? "",
+            item.regex ?? "",
+            item.name === "Export Time"
+              ? new Date().toLocaleString()
+              : (record[item.name] ?? ""),
         ]),
       ];
 
@@ -671,10 +662,9 @@ export default function App() {
         .filter(row => row[0])
         .map(row => ({
           name: String(row[0]),
-          type: String(row[1]) as
-            "QR" | "OCR",
-          value: String(row[2] ?? ""),
-          regex: String(row[3] ?? ""),
+          type: String(row[1] ?? ""),
+          regex: String(row[2] ?? ""),
+          value: String(row[3] ?? ""),
     }));
 
     const defaultResults =
