@@ -1,41 +1,53 @@
 # Serial Recorder
 
-QRコード・OCRを用いてシリアル情報を収集するアプリです。
+QR / OCR Scanner for Production Use
 
-## 主な機能
+## Application
 
-- QR/Barcode読取
-- OCR読取
-- Regexチェック
-- 重複チェック
-- Excel出力
-- QR付きExcel出力
-- CSV出力
-- ConfigURL読込
-- PWA対応
+https://serial-app.vercel.app/
 
-## EXPORT
+## Features
 
-- タップ : QR付きExcel
-- 長押し(1.5秒) : CSV
+- QR Code Scan
+- OCR Scan
+- Regex Validation
+- Excel Configuration Import
+- Excel Export
+- CSV Export
+- IndexedDB Auto Restore
+- Production Mode
+- Test Mode
 
-## LOAD
+## Load Operation
 
-- タップ : 設定ファイル読込
-- 長押し(1.5秒) : ConfigURL読込
+### Tap
 
-## CLEAR
+Load local configuration file (.xlsx)
 
-- 長押し(1.5秒) : データクリア
+### Long Press (1.5 sec)
 
-## 出力ファイル名
+Load configuration file from ConfigURL
 
-ModelのValueを利用
+## Export Operation
 
-例
+### Tap
 
-ABC100
+Export Excel file (.xlsx)
 
-```text
-ABC100-QR-20261007-0845.xlsx
-ABC100-20261007-0845.csv
+### Long Press (1.5 sec)
+
+Export CSV file (.csv)
+
+## Modes
+
+### TEST MODE
+
+- Scan verification only
+- No data save
+- No duplicate check
+
+### PRODUCTION MODE
+
+- Data save enabled
+- Duplicate check enabled
+- Export available
