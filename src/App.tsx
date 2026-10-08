@@ -1729,7 +1729,7 @@ export default function App() {
               .toString(16)
               .slice(2)}`;
 
-      const frameSize = 300;
+      const frameSize = 600;
       const frames: string[] = [];
 
       const total =
