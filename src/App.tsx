@@ -30,6 +30,26 @@ export default function App() {
   const [scanWidth, setScanWidth] = useState(50);
   const [tab, setTab] = useState<"eval" | "prod">("prod");
   const [sheetLevel, setSheetLevel] = useState(0);
+  const [testSheetOpen, setTestSheetOpen] =
+    useState(false);
+
+  const [configMode, setConfigMode] =
+    useState<"none" | "send" | "receive">(
+      "none"
+    );
+
+  const sendFileInputRef =
+    useRef<HTMLInputElement>(null);
+    
+  const [sendFrames, setSendFrames] =
+  useState<string[]>([]);
+
+  const [currentFrame, setCurrentFrame] =
+    useState(0);
+
+  const [qrImage, setQrImage] =
+    useState("");
+
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ScanItem[]>([]);
@@ -459,7 +479,7 @@ export default function App() {
             String(value),
             {
               margin: 1,
-              width: 200,
+              width: 300,
             }
           );
 
@@ -1030,6 +1050,50 @@ export default function App() {
 
 }, [scanHeight, scanWidth, zoom]);
 
+  useEffect(() => {
+
+    if (
+      configMode !== "send" ||
+      sendFrames.length === 0
+    ) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+
+      setCurrentFrame(prev =>
+        (prev + 1) %
+        sendFrames.length
+      );
+
+    }, 200);
+
+    return () =>
+      clearInterval(timer);
+
+  }, [
+    configMode,
+    sendFrames
+  ]);
+
+  useEffect(() => {
+
+    if (
+      configMode !== "send" ||
+      sendFrames.length === 0
+    ) {
+      return;
+    }
+
+    QRCode.toDataURL(
+      sendFrames[currentFrame]
+    ).then(setQrImage);
+
+  }, [
+    configMode,
+    currentFrame,
+    sendFrames
+  ]);  
   
   const scanQr = async () => {
     if (scanning) {
@@ -1586,6 +1650,77 @@ export default function App() {
     }
   };
 
+  const sendConfig = async (
+    file: File
+  ) => {
+    try {
+      const buffer =
+        await file.arrayBuffer();
+
+      const bytes =
+        new Uint8Array(buffer);
+
+      let binary = "";
+
+      for (
+        let i = 0;
+        i < bytes.length;
+        i++
+      ) {
+        binary +=
+          String.fromCharCode(bytes[i]);
+      }
+
+      const base64 = btoa(binary);
+      const frameSize = 300;
+      const frames: string[] = [];
+
+      const total =
+        Math.ceil(
+          base64.length / frameSize
+        );
+
+      for (
+        let i = 0;
+        i < total;
+        i++
+      ) {
+        const chunk =
+          base64.slice(
+            i * frameSize,
+            (i + 1) * frameSize
+          );
+
+        frames.push(
+          `CFG|${String(i + 1).padStart(4, "0")}|${String(total).padStart(4, "0")}|${chunk}`
+        );
+      }
+
+      setQrImage("");
+      setSendFrames(frames);
+      setCurrentFrame(0);
+      setConfigMode("send");
+
+      setResult(
+        `Sending: ${file.name}`
+      );
+    } catch (err) {
+      console.error(
+        "Send Config Error:",
+        err
+      );
+
+      setResult(
+        "Send Config Failed"
+      );
+
+      setConfigMode("none");
+
+      playError();
+      vibrateError();
+    }
+  };
+
   const changeZoom = async (
     delta: number
   ) => {
@@ -1819,6 +1954,25 @@ export default function App() {
       ref={fileInputRef}
       style={{ display: "none" }}
       onChange={loadConfig}
+    />
+
+    <input
+      type="file"
+      accept=".xlsx,.xls"
+      ref={sendFileInputRef}
+      style={{
+        display: "none",
+      }}
+      onChange={async e => {
+        const file =
+          e.target.files?.[0];
+
+        if (!file) return;
+
+        await sendConfig(file);
+
+        e.target.value = "";
+      }}
     />
 
     <div
@@ -2237,6 +2391,152 @@ export default function App() {
 
     </>
     )}
+
+
+    {tab === "eval" && (
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+
+          height: testSheetOpen
+            ? "320px"
+            : "40px",
+
+          background: "white",
+
+          borderTopLeftRadius: "16px",
+          borderTopRightRadius: "16px",
+
+          transition: "0.3s",
+
+          zIndex: 1000,
+
+          boxShadow:
+            "0 -2px 10px rgba(0,0,0,0.2)",
+
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Handle */}
+        <div
+          onClick={() =>
+            setTestSheetOpen(prev => !prev)
+          }
+          style={{
+            height: "40px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            cursor: "pointer",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "4px",
+              borderRadius: "2px",
+              background: "#999",
+            }}
+          />
+        </div>
+
+        {testSheetOpen && (
+          <div
+            style={{
+              padding: "10px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "10px",
+              }}
+            >
+              <button
+                style={{
+                  flex: 1,
+                  height: "50px",
+                }}
+                onClick={() => {
+                  sendFileInputRef.current?.click();
+                }}
+              >
+                SEND CONFIG
+              </button>
+
+              <button
+                style={{
+                  flex: 1,
+                  height: "50px",
+                }}
+                onClick={() =>
+                  setConfigMode("receive")
+                }
+              >
+                RECEIVE CONFIG
+              </button>
+            </div>
+
+            <div
+              style={{
+                border: "1px solid #ccc",
+                borderRadius: "8px",
+                height: "180px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                flexDirection: "column",
+              }}
+            >
+              {configMode === "none" && (
+                <div>Select Mode</div>
+              )}
+
+              {configMode === "send" && (
+                <>
+                  {qrImage ? (
+                    <img
+                      src={qrImage}
+                      alt="QR"
+                      style={{
+                        width: "140px",
+                        height: "140px",
+                        textAlign: "center",
+                      }}
+                    />
+                  ) : (
+                    <div>Generating QR Code...</div>
+                  )}
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    Frame {currentFrame + 1}
+                    {" / "}
+                    {sendFrames.length}
+                  </div>
+                </>
+              )}
+
+              {configMode === "receive" && (
+                <div>Receive Mode</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
 
     {tab === "prod" && (
     <>
