@@ -1098,7 +1098,7 @@ export default function App() {
         sendFrames.length
       );
 
-    }, 200);
+    }, 100);
 
     return () =>
       clearInterval(timer);
