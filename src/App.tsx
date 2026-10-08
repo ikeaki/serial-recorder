@@ -2998,6 +2998,17 @@ export default function App() {
 
     </div>
 
+      <div
+        style={{
+          marginTop: "6px",
+          fontSize: "12px",
+          color: "#888",
+          textAlign: "center",
+        }}
+      >
+        Build: {BUILD_DATE} JST
+      </div>
+
         
       <div
         style={{
@@ -3070,16 +3081,7 @@ export default function App() {
       >
       </div>
 
-      <div
-        style={{
-          marginTop: "20px",
-          fontSize: "12px",
-          color: "#888",
-          textAlign: "center",
-        }}
-      >
-        Build: {BUILD_DATE} JST
-      </div>      
+
 
     </>
     )}
@@ -3993,6 +3995,8 @@ export default function App() {
 
         </div>
       )}
+
+
     </div>    
 
   );
