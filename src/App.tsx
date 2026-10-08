@@ -2204,6 +2204,9 @@ const processReceiveFrame =
       return;
     }
 
+    setScanWidth(60);
+    setScanHeight(60);
+
     receiveRunningRef.current = false;
 
     receiveFrames.current.clear();
