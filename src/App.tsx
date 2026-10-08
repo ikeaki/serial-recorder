@@ -70,6 +70,18 @@ export default function App() {
   const [receiveStatus, setReceiveStatus] =
     useState("Waiting...");
 
+  const receiveTransferIdRef =
+  useRef("");
+
+  const receiveChecksumRef =
+    useRef("");
+
+  const receiveExpectedTotalRef =
+    useRef(0);
+
+  const [transferId, setTransferId] =
+    useState("");
+
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ScanItem[]>([]);
@@ -1672,14 +1684,19 @@ export default function App() {
 
   const sendConfig = async () => {
     try {
-      const configData = items.map(item => ({
-        n: item.name,
-        t: item.type ?? "",
-        r: item.regex ?? "",
-        v: results[item.name] ?? "",
-      }));
+      const configData =
+        items.map(item => ({
+          n: item.name,
+          t: item.type ?? "",
+          r: item.regex ?? "",
+          v:
+            results[item.name] ??
+            item.value ??
+            "",
+        }));
 
-      const json = JSON.stringify(configData);
+      const json =
+        JSON.stringify(configData);
 
       const bytes =
         new TextEncoder().encode(json);
@@ -1692,17 +1709,33 @@ export default function App() {
         i++
       ) {
         binary +=
-          String.fromCharCode(bytes[i]);
+          String.fromCharCode(
+            bytes[i]
+          );
       }
 
-      const base64 = btoa(binary);
+      const base64 =
+        btoa(binary);
+
+      const checksum =
+        await calculateChecksum(
+          base64
+        );
+
+      const newTransferId =
+        crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random()
+              .toString(16)
+              .slice(2)}`;
 
       const frameSize = 300;
       const frames: string[] = [];
 
       const total =
         Math.ceil(
-          base64.length / frameSize
+          base64.length /
+            frameSize
         );
 
       for (
@@ -1713,13 +1746,27 @@ export default function App() {
         const chunk =
           base64.slice(
             i * frameSize,
-            (i + 1) * frameSize
+            (i + 1) *
+              frameSize
           );
 
         frames.push(
-          `CFGJ|${String(i + 1).padStart(4, "0")}|${String(total).padStart(4, "0")}|${chunk}`
+          [
+            "CFGJ",
+            newTransferId,
+            String(i + 1)
+              .padStart(4, "0"),
+            String(total)
+              .padStart(4, "0"),
+            checksum,
+            chunk,
+          ].join("|")
         );
       }
+
+      setTransferId(
+        newTransferId
+      );
 
       setQrImage("");
       setSendFrames(frames);
@@ -1755,50 +1802,158 @@ export default function App() {
     setTestSheetOpen(false);
   }; 
 
+  const calculateChecksum = async (
+    value: string
+  ) => {
+    const data =
+      new TextEncoder().encode(value);
 
-  const stopReceiveConfig = () => {
-    receiveRunningRef.current = false;
-    receiveReaderRef.current = null;
+    const hashBuffer =
+      await crypto.subtle.digest(
+        "SHA-256",
+        data
+      );
 
-    setConfigMode("none");
-    setReceiveStatus("Stopped");
+    return Array.from(
+      new Uint8Array(hashBuffer)
+    )
+      .map(byte =>
+        byte
+          .toString(16)
+          .padStart(2, "0")
+      )
+      .join("");
   };
 
-  const processReceiveFrame = async (
+
+  const stopReceiveConfig =
+    () => {
+      receiveRunningRef.current =
+        false;
+
+      receiveReaderRef.current =
+        null;
+
+      receiveFrames.current.clear();
+
+      receiveTransferIdRef.current =
+        "";
+
+      receiveChecksumRef.current =
+        "";
+
+      receiveExpectedTotalRef.current =
+        0;
+
+      setTransferId("");
+      setReceivedCount(0);
+      setReceiveTotal(0);
+      setConfigMode("none");
+      setReceiveStatus("Stopped");
+    };
+
+const processReceiveFrame =
+  async (
     text: string
   ) => {
-    if (!text.startsWith("CFGJ|")) {
+    if (
+      !text.startsWith(
+        "CFGJ|"
+      )
+    ) {
       return;
     }
 
-    const parts = text.split("|");
-
-    if (parts.length !== 4) {
-      return;
-    }
-
-    const index =
-      Number(parts[1]);
-
-    const total =
-      Number(parts[2]);
-
-    const chunk =
-      parts[3];
+    const parts =
+      text.split("|");
 
     if (
-      !Number.isInteger(index) ||
-      !Number.isInteger(total) ||
+      parts.length !== 6
+    ) {
+      return;
+    }
+
+    const receivedTransferId =
+      parts[1];
+
+    const index =
+      Number(parts[2]);
+
+    const total =
+      Number(parts[3]);
+
+    const checksum =
+      parts[4];
+
+    const chunk =
+      parts[5];
+
+    if (
+      !receivedTransferId ||
+      !checksum ||
+      !chunk ||
+      !Number.isInteger(
+        index
+      ) ||
+      !Number.isInteger(
+        total
+      ) ||
       index < 1 ||
       total < 1 ||
-      index > total ||
-      !chunk
+      index > total
     ) {
       return;
     }
 
     if (
-      receiveFrames.current.has(index)
+      !receiveTransferIdRef
+        .current
+    ) {
+      receiveTransferIdRef
+        .current =
+        receivedTransferId;
+
+      receiveChecksumRef
+        .current =
+        checksum;
+
+      receiveExpectedTotalRef
+        .current =
+        total;
+
+      setTransferId(
+        receivedTransferId
+      );
+    }
+
+    if (
+      receiveTransferIdRef
+        .current !==
+      receivedTransferId
+    ) {
+      return;
+    }
+
+    if (
+      receiveChecksumRef
+        .current !==
+      checksum
+    ) {
+      return;
+    }
+
+    if (
+      receiveExpectedTotalRef
+        .current !==
+      total
+    ) {
+      return;
+    }
+
+    if (
+      receiveFrames.current.has(
+        index
+      )
     ) {
       return;
     }
@@ -1809,27 +1964,37 @@ export default function App() {
     );
 
     const count =
-      receiveFrames.current.size;
+      receiveFrames.current
+        .size;
 
-    setReceivedCount(count);
-    setReceiveTotal(total);
+    setReceivedCount(
+      count
+    );
+
+    setReceiveTotal(
+      total
+    );
 
     setReceiveStatus(
       `Receiving ${count} / ${total}`
     );
 
-    if (count !== total) {
+    if (
+      count !== total
+    ) {
       return;
     }
 
-    receiveRunningRef.current = false;
+    receiveRunningRef.current =
+      false;
 
     setReceiveStatus(
-      "Restoring Config..."
+      "Checking Data..."
     );
 
     try {
-      const chunks: string[] = [];
+      const chunks:
+        string[] = [];
 
       for (
         let frame = 1;
@@ -1841,17 +2006,39 @@ export default function App() {
             frame
           );
 
-        if (!receivedChunk) {
+        if (
+          !receivedChunk
+        ) {
           throw new Error(
             `Missing Frame ${frame}`
           );
         }
 
-        chunks.push(receivedChunk);
+        chunks.push(
+          receivedChunk
+        );
       }
 
       const base64 =
         chunks.join("");
+
+      const calculatedChecksum =
+        await calculateChecksum(
+          base64
+        );
+
+      if (
+        calculatedChecksum !==
+        checksum
+      ) {
+        throw new Error(
+          "Checksum Mismatch"
+        );
+      }
+
+      setReceiveStatus(
+        "Restoring Config..."
+      );
 
       const binary =
         atob(base64);
@@ -1863,45 +2050,66 @@ export default function App() {
 
       for (
         let i = 0;
-        i < binary.length;
+        i <
+        binary.length;
         i++
       ) {
         bytes[i] =
-          binary.charCodeAt(i);
+          binary.charCodeAt(
+            i
+          );
       }
 
       const json =
-        new TextDecoder().decode(
-          bytes
-        );
+        new TextDecoder()
+          .decode(bytes);
 
       const receivedConfig =
-        JSON.parse(json) as Array<{
+        JSON.parse(
+          json
+        ) as Array<{
           n: string;
           t?: string;
           r?: string;
           v?: string;
         }>;
 
-      const restoredItems: ScanItem[] =
-        receivedConfig.map(item => ({
-          name: item.n,
-          type: item.t ?? "",
-          regex: item.r ?? "",
-          value: item.v ?? "",
-        }));
-
-      const restoredResults:
-        Record<string, string> =
-          Object.fromEntries(
-            restoredItems.map(item => [
-              item.name,
-              item.value ?? "",
-            ])
+      const restoredItems:
+        ScanItem[] =
+          receivedConfig.map(
+            item => ({
+              name: item.n,
+              type:
+                item.t ?? "",
+              regex:
+                item.r ?? "",
+              value:
+                item.v ?? "",
+            })
           );
 
-      setItems(restoredItems);
-      setResults(restoredResults);
+      const restoredResults:
+        Record<
+          string,
+          string
+        > =
+          Object.fromEntries(
+            restoredItems.map(
+              item => [
+                item.name,
+                item.value ??
+                  "",
+              ]
+            )
+          );
+
+      setItems(
+        restoredItems
+      );
+
+      setResults(
+        restoredResults
+      );
 
       const startIndex =
         restoredItems.findIndex(
@@ -1910,7 +2118,9 @@ export default function App() {
               "ConfigURL",
               "Export Time",
               "Model",
-            ].includes(item.name)
+            ].includes(
+              item.name
+            )
         );
 
       setCurrentIndex(
@@ -1919,15 +2129,26 @@ export default function App() {
           : 0
       );
 
-      await saveProductionRecord({
-        configItems: restoredItems,
-        ...restoredResults,
-        updateTime:
-          new Date().toLocaleString(),
-      });
+      await saveProductionRecord(
+        {
+          configItems:
+            restoredItems,
+
+          ...restoredResults,
+
+          updateTime:
+            new Date()
+              .toLocaleString(),
+
+          transferId:
+            receivedTransferId,
+
+          checksum,
+        }
+      );
 
       setReceiveStatus(
-        "Config Loaded"
+        "Checksum OK / Config Loaded"
       );
 
       setResult(
@@ -1947,12 +2168,17 @@ export default function App() {
         err
       );
 
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Restore Failed";
+
       setReceiveStatus(
-        "Restore Failed"
+        message
       );
 
       setResult(
-        "Received Config Failed"
+        `Received Config Failed: ${message}`
       );
 
       showOverlay(
@@ -1964,6 +2190,7 @@ export default function App() {
       vibrateError();
     }
   };
+
 
   const startReceiveConfig = async () => {
     if (
@@ -1981,11 +2208,19 @@ export default function App() {
 
     receiveFrames.current.clear();
 
+    receiveTransferIdRef.current = "";
+    receiveChecksumRef.current = "";
+    receiveExpectedTotalRef.current = 0;
+
+    setTransferId("");
     setReceivedCount(0);
     setReceiveTotal(0);
     setReceiveStatus("Waiting...");
 
     setConfigMode("receive");
+
+    receiveRunningRef.current = true;
+
 
     receiveRunningRef.current = true;
 
@@ -3038,6 +3273,20 @@ export default function App() {
               }}
             >
               {receiveStatus}
+            </div>
+
+            <div
+              style={{
+                marginTop: "4px",
+                maxWidth: "90%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                fontSize: "11px",
+                color: "#666",
+              }}
+            >
+              ID: {transferId || "-"}
             </div>
 
             <div
