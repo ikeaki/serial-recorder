@@ -37,9 +37,6 @@ export default function App() {
     useState<"none" | "send" | "receive">(
       "none"
     );
-
-  const sendFileInputRef =
-    useRef<HTMLInputElement>(null);
     
   const [sendFrames, setSendFrames] =
   useState<string[]>([]);
@@ -1673,15 +1670,19 @@ export default function App() {
     }
   };
 
-  const sendConfig = async (
-    file: File
-  ) => {
+  const sendConfig = async () => {
     try {
-      const buffer =
-        await file.arrayBuffer();
+      const configData = items.map(item => ({
+        n: item.name,
+        t: item.type ?? "",
+        r: item.regex ?? "",
+        v: results[item.name] ?? "",
+      }));
+
+      const json = JSON.stringify(configData);
 
       const bytes =
-        new Uint8Array(buffer);
+        new TextEncoder().encode(json);
 
       let binary = "";
 
@@ -1695,6 +1696,7 @@ export default function App() {
       }
 
       const base64 = btoa(binary);
+
       const frameSize = 300;
       const frames: string[] = [];
 
@@ -1715,7 +1717,7 @@ export default function App() {
           );
 
         frames.push(
-          `CFG|${String(i + 1).padStart(4, "0")}|${String(total).padStart(4, "0")}|${chunk}`
+          `CFGJ|${String(i + 1).padStart(4, "0")}|${String(total).padStart(4, "0")}|${chunk}`
         );
       }
 
@@ -1725,9 +1727,8 @@ export default function App() {
       setConfigMode("send");
       setTestSheetOpen(true);
 
-
       setResult(
-        `Sending: ${file.name}`
+        `Sending Config: ${frames.length} Frames`
       );
     } catch (err) {
       console.error(
@@ -1766,7 +1767,7 @@ export default function App() {
   const processReceiveFrame = async (
     text: string
   ) => {
-    if (!text.startsWith("CFG|")) {
+    if (!text.startsWith("CFGJ|")) {
       return;
     }
 
@@ -1824,7 +1825,7 @@ export default function App() {
     receiveRunningRef.current = false;
 
     setReceiveStatus(
-      "Restoring Excel..."
+      "Restoring Config..."
     );
 
     try {
@@ -1836,7 +1837,9 @@ export default function App() {
         frame++
       ) {
         const receivedChunk =
-          receiveFrames.current.get(frame);
+          receiveFrames.current.get(
+            frame
+          );
 
         if (!receivedChunk) {
           throw new Error(
@@ -1867,9 +1870,61 @@ export default function App() {
           binary.charCodeAt(i);
       }
 
-      await loadExcelConfig(
-        bytes.buffer
+      const json =
+        new TextDecoder().decode(
+          bytes
+        );
+
+      const receivedConfig =
+        JSON.parse(json) as Array<{
+          n: string;
+          t?: string;
+          r?: string;
+          v?: string;
+        }>;
+
+      const restoredItems: ScanItem[] =
+        receivedConfig.map(item => ({
+          name: item.n,
+          type: item.t ?? "",
+          regex: item.r ?? "",
+          value: item.v ?? "",
+        }));
+
+      const restoredResults:
+        Record<string, string> =
+          Object.fromEntries(
+            restoredItems.map(item => [
+              item.name,
+              item.value ?? "",
+            ])
+          );
+
+      setItems(restoredItems);
+      setResults(restoredResults);
+
+      const startIndex =
+        restoredItems.findIndex(
+          item =>
+            ![
+              "ConfigURL",
+              "Export Time",
+              "Model",
+            ].includes(item.name)
+        );
+
+      setCurrentIndex(
+        startIndex >= 0
+          ? startIndex
+          : 0
       );
+
+      await saveProductionRecord({
+        configItems: restoredItems,
+        ...restoredResults,
+        updateTime:
+          new Date().toLocaleString(),
+      });
 
       setReceiveStatus(
         "Config Loaded"
@@ -1908,7 +1963,7 @@ export default function App() {
       playError();
       vibrateError();
     }
-  };  
+  };
 
   const startReceiveConfig = async () => {
     if (
@@ -2332,24 +2387,6 @@ export default function App() {
       onChange={loadConfig}
     />
 
-    <input
-      type="file"
-      accept=".xlsx,.xls"
-      ref={sendFileInputRef}
-      style={{
-        display: "none",
-      }}
-      onChange={async e => {
-        const file =
-          e.target.files?.[0];
-
-        if (!file) return;
-
-        await sendConfig(file);
-
-        e.target.value = "";
-      }}
-    />
 
     <div
       style={{
@@ -2872,10 +2909,7 @@ export default function App() {
                 flex: 1,
                 height: "50px",
               }}
-              onClick={() => {
-                sendFileInputRef.current
-                  ?.click();
-              }}
+              onClick={sendConfig}
             >
               SEND CONFIG
             </button>
