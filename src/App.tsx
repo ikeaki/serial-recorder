@@ -50,6 +50,29 @@ export default function App() {
   const [qrImage, setQrImage] =
     useState("");
 
+
+  const receiveFrames =
+  useRef<Map<number, string>>(
+    new Map()
+  );
+
+  const receiveRunningRef =
+    useRef(false);
+
+  const receiveReaderRef =
+    useRef<BrowserMultiFormatReader | null>(
+      null
+    );
+
+  const [receivedCount, setReceivedCount] =
+    useState(0);
+
+  const [receiveTotal, setReceiveTotal] =
+    useState(0);
+
+  const [receiveStatus, setReceiveStatus] =
+    useState("Waiting...");
+
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ScanItem[]>([]);
@@ -1721,6 +1744,348 @@ export default function App() {
     }
   };
 
+  const stopReceiveConfig = () => {
+    receiveRunningRef.current = false;
+    receiveReaderRef.current = null;
+
+    setConfigMode("none");
+    setReceiveStatus("Stopped");
+  };
+
+  const processReceiveFrame = async (
+    text: string
+  ) => {
+    if (!text.startsWith("CFG|")) {
+      return;
+    }
+
+    const parts = text.split("|");
+
+    if (parts.length !== 4) {
+      return;
+    }
+
+    const index =
+      Number(parts[1]);
+
+    const total =
+      Number(parts[2]);
+
+    const chunk =
+      parts[3];
+
+    if (
+      !Number.isInteger(index) ||
+      !Number.isInteger(total) ||
+      index < 1 ||
+      total < 1 ||
+      index > total ||
+      !chunk
+    ) {
+      return;
+    }
+
+    if (
+      receiveFrames.current.has(index)
+    ) {
+      return;
+    }
+
+    receiveFrames.current.set(
+      index,
+      chunk
+    );
+
+    const count =
+      receiveFrames.current.size;
+
+    setReceivedCount(count);
+    setReceiveTotal(total);
+
+    setReceiveStatus(
+      `Receiving ${count} / ${total}`
+    );
+
+    if (count !== total) {
+      return;
+    }
+
+    receiveRunningRef.current = false;
+
+    setReceiveStatus(
+      "Restoring Excel..."
+    );
+
+    try {
+      const chunks: string[] = [];
+
+      for (
+        let frame = 1;
+        frame <= total;
+        frame++
+      ) {
+        const receivedChunk =
+          receiveFrames.current.get(frame);
+
+        if (!receivedChunk) {
+          throw new Error(
+            `Missing Frame ${frame}`
+          );
+        }
+
+        chunks.push(receivedChunk);
+      }
+
+      const base64 =
+        chunks.join("");
+
+      const binary =
+        atob(base64);
+
+      const bytes =
+        new Uint8Array(
+          binary.length
+        );
+
+      for (
+        let i = 0;
+        i < binary.length;
+        i++
+      ) {
+        bytes[i] =
+          binary.charCodeAt(i);
+      }
+
+      await loadExcelConfig(
+        bytes.buffer
+      );
+
+      setReceiveStatus(
+        "Config Loaded"
+      );
+
+      setResult(
+        "Received Config Loaded"
+      );
+
+      showOverlay(
+        "✓ CONFIG",
+        "#00ff00"
+      );
+
+      playSuccess();
+      vibrateSuccess();
+    } catch (err) {
+      console.error(
+        "Config Restore Error:",
+        err
+      );
+
+      setReceiveStatus(
+        "Restore Failed"
+      );
+
+      setResult(
+        "Received Config Failed"
+      );
+
+      showOverlay(
+        "✕ CONFIG",
+        "#ff0000"
+      );
+
+      playError();
+      vibrateError();
+    }
+  };  
+
+  const startReceiveConfig = async () => {
+    if (
+      !videoRef.current ||
+      !previewCanvasRef.current
+    ) {
+      setReceiveStatus(
+        "Camera Not Ready"
+      );
+
+      return;
+    }
+
+    receiveRunningRef.current = false;
+
+    receiveFrames.current.clear();
+
+    setReceivedCount(0);
+    setReceiveTotal(0);
+    setReceiveStatus("Waiting...");
+
+    setConfigMode("receive");
+
+    receiveRunningRef.current = true;
+
+    const reader =
+      new BrowserMultiFormatReader();
+
+    receiveReaderRef.current =
+      reader;
+
+    const scanLoop = async () => {
+      if (
+        !receiveRunningRef.current
+      ) {
+        return;
+      }
+
+      const video =
+        videoRef.current;
+
+      if (
+        !video ||
+        video.readyState < 2 ||
+        video.videoWidth === 0 ||
+        video.videoHeight === 0
+      ) {
+        window.setTimeout(
+          scanLoop,
+          200
+        );
+
+        return;
+      }
+
+      try {
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+        canvas.width =
+          video.videoWidth;
+
+        canvas.height =
+          video.videoHeight;
+
+        const ctx =
+          canvas.getContext("2d");
+
+        if (!ctx) {
+          window.setTimeout(
+            scanLoop,
+            200
+          );
+
+          return;
+        }
+
+        const drawHeight =
+          drawCameraFrame(
+            ctx,
+            canvas,
+            video
+          );
+
+        const {
+          cropX,
+          cropY,
+          cropW,
+          cropH,
+        } = getScanAreaWH(
+          canvas.width,
+          drawHeight
+        );
+
+        const cropCanvas =
+          document.createElement(
+            "canvas"
+          );
+
+        cropCanvas.width =
+          Math.round(cropW * 2);
+
+        cropCanvas.height =
+          Math.round(cropH * 2);
+
+        const cropCtx =
+          cropCanvas.getContext("2d");
+
+        if (!cropCtx) {
+          window.setTimeout(
+            scanLoop,
+            200
+          );
+
+          return;
+        }
+
+        cropCtx.drawImage(
+          canvas,
+          cropX,
+          cropY,
+          cropW,
+          cropH,
+          0,
+          0,
+          cropCanvas.width,
+          cropCanvas.height
+        );
+
+        const image =
+          cropCanvas.toDataURL(
+            "image/png"
+          );
+
+        const img =
+          document.createElement("img");
+
+        img.src = image;
+
+        await new Promise<void>(
+          (resolve, reject) => {
+            img.onload =
+              () => resolve();
+
+            img.onerror =
+              () => reject(
+                new Error(
+                  "Image Load Failed"
+                )
+              );
+          }
+        );
+
+        const scanResult =
+          await reader
+            .decodeFromImageElement(
+              img
+            );
+
+        const text =
+          scanResult
+            .getText()
+            .trim();
+
+        await processReceiveFrame(
+          text
+        );
+      } catch {
+        // QRが読めないFrameは無視
+      }
+
+      if (
+        receiveRunningRef.current
+      ) {
+        window.setTimeout(
+          scanLoop,
+          200
+        );
+      }
+    };
+
+    scanLoop();
+  };
+
+
+
   const changeZoom = async (
     delta: number
   ) => {
@@ -2476,12 +2841,11 @@ export default function App() {
                   flex: 1,
                   height: "50px",
                 }}
-                onClick={() =>
-                  setConfigMode("receive")
-                }
+                onClick={startReceiveConfig}
               >
                 RECEIVE CONFIG
               </button>
+
             </div>
 
             <div
@@ -2529,7 +2893,84 @@ export default function App() {
               )}
 
               {configMode === "receive" && (
-                <div>Receive Mode</div>
+                <>
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    {receiveStatus}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      fontSize: "16px",
+                      textAlign: "center",
+                    }}
+                  >
+                    {receivedCount}
+                    {" / "}
+                    {receiveTotal}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      width: "80%",
+                      height: "12px",
+                      borderRadius: "6px",
+                      background: "#ddd",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width:
+                          receiveTotal > 0
+                            ? `${
+                                receivedCount /
+                                receiveTotal *
+                                100
+                              }%`
+                            : "0%",
+                        height: "100%",
+                        background: "#22c55e",
+                        transition: "width 0.2s",
+                      }}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {receiveTotal > 0
+                      ? Math.floor(
+                          receivedCount /
+                            receiveTotal *
+                            100
+                        )
+                      : 0}
+                    %
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={stopReceiveConfig}
+                    style={{
+                      marginTop: "8px",
+                      width: "140px",
+                      height: "36px",
+                    }}
+                  >
+                    STOP
+                  </button>
+                </>
               )}
             </div>
           </div>
