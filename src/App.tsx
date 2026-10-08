@@ -1098,7 +1098,7 @@ export default function App() {
         sendFrames.length
       );
 
-    }, 100);
+    }, 200);
 
     return () =>
       clearInterval(timer);
@@ -1698,24 +1698,13 @@ export default function App() {
       const json =
         JSON.stringify(configData);
 
-      const bytes =
-        new TextEncoder().encode(json);
-
-      let binary = "";
-
-      for (
-        let i = 0;
-        i < bytes.length;
-        i++
-      ) {
-        binary +=
-          String.fromCharCode(
-            bytes[i]
-          );
-      }
+      const compressedBytes =
+        await compressText(json);
 
       const base64 =
-        btoa(binary);
+        bytesToBase64(
+          compressedBytes
+        );
 
       const checksum =
         await calculateChecksum(
@@ -1729,7 +1718,8 @@ export default function App() {
               .toString(16)
               .slice(2)}`;
 
-      const frameSize = 600;
+      const frameSize = 300;
+
       const frames: string[] = [];
 
       const total =
@@ -1752,7 +1742,7 @@ export default function App() {
 
         frames.push(
           [
-            "CFGJ",
+            "CFGZ",
             newTransferId,
             String(i + 1)
               .padStart(4, "0"),
@@ -1777,12 +1767,7 @@ export default function App() {
       setResult(
         `Sending Config: ${frames.length} Frames`
       );
-    } catch (err) {
-      console.error(
-        "Send Config Error:",
-        err
-      );
-
+    } catch {
       setResult(
         "Send Config Failed"
       );
@@ -1852,24 +1837,110 @@ export default function App() {
       setReceiveStatus("Stopped");
     };
 
-const processReceiveFrame =
-  async (
-    text: string
-  ) => {
-    if (
-      !text.startsWith(
-        "CFGJ|"
-      )
-    ) {
+    const compressText = async (
+      text: string
+    ): Promise<Uint8Array> => {
+      const input =
+        new TextEncoder().encode(text);
+
+      const stream =
+        new Blob([input])
+          .stream()
+          .pipeThrough(
+            new CompressionStream("gzip")
+          );
+
+      const buffer =
+        await new Response(stream)
+          .arrayBuffer();
+
+      return new Uint8Array(buffer);
+    };
+
+    const decompressText = async (
+      bytes: Uint8Array
+    ): Promise<string> => {
+      const arrayBuffer =
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset +
+            bytes.byteLength
+        ) as ArrayBuffer;
+
+      const stream =
+        new Blob([arrayBuffer])
+          .stream()
+          .pipeThrough(
+            new DecompressionStream("gzip")
+          );
+
+      const buffer =
+        await new Response(stream)
+          .arrayBuffer();
+
+      return new TextDecoder().decode(
+        buffer
+      );
+    };
+
+    const bytesToBase64 = (
+      bytes: Uint8Array
+    ): string => {
+      let binary = "";
+
+      const blockSize = 8192;
+
+      for (
+        let offset = 0;
+        offset < bytes.length;
+        offset += blockSize
+      ) {
+        const block =
+          bytes.subarray(
+            offset,
+            offset + blockSize
+          );
+
+        binary +=
+          String.fromCharCode(...block);
+      }
+
+      return btoa(binary);
+    };
+
+    const base64ToBytes = (
+      base64: string
+    ): Uint8Array => {
+      const binary = atob(base64);
+
+      const bytes =
+        new Uint8Array(binary.length);
+
+      for (
+        let i = 0;
+        i < binary.length;
+        i++
+      ) {
+        bytes[i] =
+          binary.charCodeAt(i);
+      }
+
+      return bytes;
+    };
+
+
+    const processReceiveFrame =
+      async (
+        text: string
+      ) => {
+    if (!text.startsWith("CFGZ|")) {
       return;
     }
 
     const parts =
       text.split("|");
 
-    if (
-      parts.length !== 6
-    ) {
+    if (parts.length !== 6) {
       return;
     }
 
@@ -2040,34 +2111,16 @@ const processReceiveFrame =
         "Restoring Config..."
       );
 
-      const binary =
-        atob(base64);
-
-      const bytes =
-        new Uint8Array(
-          binary.length
-        );
-
-      for (
-        let i = 0;
-        i <
-        binary.length;
-        i++
-      ) {
-        bytes[i] =
-          binary.charCodeAt(
-            i
-          );
-      }
+      const compressedBytes =
+        base64ToBytes(base64);
 
       const json =
-        new TextDecoder()
-          .decode(bytes);
+        await decompressText(
+          compressedBytes
+        );
 
       const receivedConfig =
-        JSON.parse(
-          json
-        ) as Array<{
+        JSON.parse(json) as Array<{
           n: string;
           t?: string;
           r?: string;
@@ -2079,37 +2132,25 @@ const processReceiveFrame =
           receivedConfig.map(
             item => ({
               name: item.n,
-              type:
-                item.t ?? "",
-              regex:
-                item.r ?? "",
-              value:
-                item.v ?? "",
+              type: item.t ?? "",
+              regex: item.r ?? "",
+              value: item.v ?? "",
             })
           );
 
       const restoredResults:
-        Record<
-          string,
-          string
-        > =
+        Record<string, string> =
           Object.fromEntries(
             restoredItems.map(
               item => [
                 item.name,
-                item.value ??
-                  "",
+                item.value ?? "",
               ]
             )
           );
 
-      setItems(
-        restoredItems
-      );
-
-      setResults(
-        restoredResults
-      );
+      setItems(restoredItems);
+      setResults(restoredResults);
 
       const startIndex =
         restoredItems.findIndex(
