@@ -1131,119 +1131,206 @@ export default function App() {
     if (scanning) {
       return;
     }
+
+    const video =
+      videoRef.current;
+
+    if (
+      !video ||
+      video.readyState < 2 ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
+    ) {
+      setResult("Camera Not Ready");
+      showOverlay("✕ CAMERA", "#ff0000");
+      playError();
+      vibrateError();
+      return;
+    }
+
     setScanning(true);
 
-    const reader = new BrowserMultiFormatReader();
-    
+    const reader =
+      new BrowserMultiFormatReader();
+
+    const timeoutMs = 2000;
+    const scanIntervalMs = 120;
+    const startTime = performance.now();
+
+    let decodedText: string | null = null;
+
     try {
+      while (
+        performance.now() - startTime <
+        timeoutMs
+      ) {
+        const canvas =
+          document.createElement("canvas");
 
-      const canvas =
-        document.createElement("canvas");
+        canvas.width =
+          video.videoWidth;
 
-      canvas.width =
-        videoRef.current!.videoWidth;
+        canvas.height =
+          video.videoHeight;
 
-      canvas.height =
-        videoRef.current!.videoHeight;
+        const ctx =
+          canvas.getContext("2d");
 
-      const ctx =
-        canvas.getContext("2d");
+        if (!ctx) {
+          throw new Error(
+            "Canvas Context Error"
+          );
+        }
 
-      if (!ctx) return;
+        const drawHeight =
+          drawCameraFrame(
+            ctx,
+            canvas,
+            video
+          );
 
-      const drawHeight =
-        drawCameraFrame(
-          ctx,
+        const {
+          cropX,
+          cropY,
+          cropW,
+          cropH,
+        } = getScanAreaWH(
+          canvas.width,
+          drawHeight
+        );
+
+        const cropCanvas =
+          document.createElement("canvas");
+
+        cropCanvas.width =
+          Math.round(cropW * 2);
+
+        cropCanvas.height =
+          Math.round(cropH * 2);
+
+        const cropCtx =
+          cropCanvas.getContext("2d");
+
+        if (!cropCtx) {
+          throw new Error(
+            "Crop Canvas Context Error"
+          );
+        }
+
+        cropCtx.drawImage(
           canvas,
-          videoRef.current!
+          cropX,
+          cropY,
+          cropW,
+          cropH,
+          0,
+          0,
+          cropCanvas.width,
+          cropCanvas.height
         );
 
-      const {
-        cropX,
-        cropY,
-        cropW,
-        cropH,
-      } = getScanAreaWH(
-        canvas.width,
-        drawHeight
-      );
+        const image =
+          cropCanvas.toDataURL(
+            "image/png"
+          );
 
-      const cropCanvas =
-        document.createElement("canvas");
+        const img =
+          document.createElement("img");
 
-      cropCanvas.width = cropW * 2;
-      cropCanvas.height = cropH * 2;
+        img.src = image;
 
-      const cropCtx =
-        cropCanvas.getContext("2d");
+        await new Promise<void>(
+          (resolve, reject) => {
+            img.onload = () =>
+              resolve();
 
-      if (!cropCtx) return;
-
-      cropCtx.drawImage(
-        canvas,
-        cropX,
-        cropY,
-        cropW,
-        cropH,
-        0,
-        0,
-        cropW * 2,
-        cropH * 2
-      );
-
-
-      const image =
-        cropCanvas.toDataURL("image/png");
-
-      const img =
-        document.createElement("img");
-
-      img.src = image;
-
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-      });
-      
-    const resultPromise =
-    reader.decodeFromImageElement(img);
-
-      const timeoutPromise =
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("timeout")),
-            2000
-          )
+            img.onerror = () =>
+              reject(
+                new Error(
+                  "Image Load Error"
+                )
+              );
+          }
         );
 
-      const result = await Promise.race([
-        resultPromise,
-        timeoutPromise,
-      ])as Awaited<typeof resultPromise>;
-      
-      const text = result.getText().trim();
+        try {
+          const scanResult =
+            await reader
+              .decodeFromImageElement(
+                img
+              );
 
+          const text =
+            scanResult
+              .getText()
+              .trim();
+
+          if (text) {
+            decodedText = text;
+            break;
+          }
+        } catch {
+          // この画像で読めなければ
+          // 次の画像を解析する
+        }
+
+        await new Promise<void>(
+          resolve => {
+            window.setTimeout(
+              resolve,
+              scanIntervalMs
+            );
+          }
+        );
+      }
+
+      if (!decodedText) {
+        setResult("Scan Timeout");
+
+        showOverlay(
+          "✕ QR",
+          "#ff0000"
+        );
+
+        playError();
+        vibrateError();
+
+        return;
+      }
+
+      const text = decodedText;
 
       if (tab === "eval") {
-        showOverlay("✓ OK", "#00ff00");
         setResult(text);
+
+        showOverlay(
+          "✓ OK",
+          "#00ff00"
+        );
+
         playSuccess();
         vibrateSuccess();
+
         return;
       }
 
       if (
         tab === "prod" &&
-        Object.values(results).includes(text)
+        Object.values(
+          results
+        ).includes(text)
       ) {
-
-        playError();
-        vibrateError();
-
-        showOverlay("✕ DUP", "#ff0000");
-
         setResult(
           "⚠ Duplicate In Current Unit"
         );
+
+        showOverlay(
+          "✕ DUP",
+          "#ff0000"
+        );
+
+        playError();
+        vibrateError();
 
         return;
       }
@@ -1252,7 +1339,6 @@ export default function App() {
         tab === "prod" &&
         items[currentIndex]
       ) {
-
         const itemName =
           items[currentIndex].name;
 
@@ -1262,12 +1348,13 @@ export default function App() {
         };
 
         setResults(newResults);
-        
+
         await saveProductionRecord({
           configItems: items,
           ...newResults,
           updateTime:
-            new Date().toLocaleString(),
+            new Date()
+              .toLocaleString(),
         });
 
         setCurrentIndex(prev =>
@@ -1278,46 +1365,26 @@ export default function App() {
         );
       }
 
-      showOverlay("✓ OK", "#00ff00");
+      setResult(text);
+
+      showOverlay(
+        "✓ OK",
+        "#00ff00"
+      );
+
       playSuccess();
-      vibrateSuccess();
+    vibrateSuccess();
+    } catch (err) {
+      setResult("QR Scan Failed");
 
-      
-      } catch (err) {
+      showOverlay(
+        "✕ QR",
+        "#ff0000"
+      );
 
-        if (
-          err instanceof Error &&
-          err.message === "timeout"
-        ) {
-
-          showOverlay(
-            "✕ QR",
-            "#ff0000"
-          );
-
-          playError();
-          vibrateError();
-
-          setResult("Scan Timeout");
-
-          return;
-        }
-
-        console.error(err);
-
-        showOverlay(
-          "✕ QR",
-          "#ff0000"
-        );
-
-        playError();
-        vibrateError();
-
-        setResult("QR Not Found");
-
-      }
-
-    finally {
+      playError();
+      vibrateError();
+    } finally {
       setScanning(false);
     }
   };
