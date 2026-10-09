@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { createWorker } from "tesseract.js";
 import ExcelJS from "exceljs";
 import QRCode from "qrcode";
+import * as pako from "pako";
 
 const DB_NAME = "serial-db";
 
@@ -1907,46 +1908,20 @@ export default function App() {
     const compressText = async (
       text: string
     ): Promise<Uint8Array> => {
-      const input =
+      const bytes =
         new TextEncoder().encode(text);
 
-      const stream =
-        new Blob([input])
-          .stream()
-          .pipeThrough(
-            new CompressionStream("gzip")
-          );
-
-      const buffer =
-        await new Response(stream)
-          .arrayBuffer();
-
-      return new Uint8Array(buffer);
+      return pako.gzip(bytes);
     };
 
     const decompressText = async (
       bytes: Uint8Array
     ): Promise<string> => {
-      const arrayBuffer =
-        bytes.buffer.slice(
-          bytes.byteOffset,
-          bytes.byteOffset +
-            bytes.byteLength
-        ) as ArrayBuffer;
-
-      const stream =
-        new Blob([arrayBuffer])
-          .stream()
-          .pipeThrough(
-            new DecompressionStream("gzip")
-          );
-
-      const buffer =
-        await new Response(stream)
-          .arrayBuffer();
+      const decompressed =
+        pako.ungzip(bytes);
 
       return new TextDecoder().decode(
-        buffer
+        decompressed
       );
     };
 
