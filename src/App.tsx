@@ -96,41 +96,28 @@ export default function App() {
     stopSendConfig:
       stopSendConfigFromHook,
 
-    // 受信処理を移動するまで一時的に使用
+    // Config受信表示
+    receivedCount,
+    receiveTotal,
+    receiveStatus,
+
+    // 受信処理移動まで一時的に取得
+    receiveFrames,
+    receiveRunningRef,
+    receiveReaderRef,
+    receiveTransferIdRef,
+    receiveChecksumRef,
+    receiveExpectedTotalRef,
+
+    setReceivedCount,
+    setReceiveTotal,
+    setReceiveStatus,
+
+    resetReceiveState,
+
     setConfigMode,
     setTransferId,
   } = useConfigTransfer();
-
-  const receiveFrames =
-  useRef<Map<number, string>>(
-    new Map()
-  );
-
-  const receiveRunningRef =
-    useRef(false);
-
-  const receiveReaderRef =
-    useRef<BrowserMultiFormatReader | null>(
-      null
-    );
-
-  const [receivedCount, setReceivedCount] =
-    useState(0);
-
-  const [receiveTotal, setReceiveTotal] =
-    useState(0);
-
-  const [receiveStatus, setReceiveStatus] =
-    useState("Waiting...");
-
-  const receiveTransferIdRef =
-  useRef("");
-
-  const receiveChecksumRef =
-    useRef("");
-
-  const receiveExpectedTotalRef =
-    useRef(0);
 
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1191,27 +1178,6 @@ export default function App() {
 
       setTestSheetOpen(false);
     };
-
-  // Config受信中のデータ・進捗Stateを初期化
-  const resetReceiveState = () => {
-    receiveRunningRef.current =
-      false;
-
-    receiveFrames.current.clear();
-
-    receiveTransferIdRef.current =
-      "";
-
-    receiveChecksumRef.current =
-      "";
-
-    receiveExpectedTotalRef.current =
-      0;
-
-    setTransferId("");
-    setReceivedCount(0);
-    setReceiveTotal(0);
-  };
 
     // Config受信を停止
     const stopReceiveConfig =

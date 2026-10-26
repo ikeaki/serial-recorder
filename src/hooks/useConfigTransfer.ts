@@ -2,8 +2,13 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
+
+import {
+  BrowserMultiFormatReader,
+} from "@zxing/browser";
 
 import QRCode from "qrcode";
 
@@ -66,6 +71,54 @@ export const useConfigTransfer = () => {
     transferId,
     setTransferId,
   ] = useState("");
+
+  // Config QR受信Frameを保持
+  const receiveFrames =
+  useRef<Map<number, string>>(
+      new Map()
+  );
+
+  // Config QR受信ループの実行状態
+  const receiveRunningRef =
+  useRef(false);
+
+  // Config QR受信用Reader
+  const receiveReaderRef =
+  useRef<
+      BrowserMultiFormatReader | null
+  >(null);
+
+  // 受信済みFrame数
+  const [
+  receivedCount,
+  setReceivedCount,
+  ] = useState(0);
+
+  // 受信予定Frame総数
+  const [
+  receiveTotal,
+  setReceiveTotal,
+  ] = useState(0);
+
+  // Config受信状態の表示
+  const [
+  receiveStatus,
+  setReceiveStatus,
+  ] = useState(
+  "Waiting..."
+  );
+
+  // 受信中のTransfer ID
+  const receiveTransferIdRef =
+  useRef("");
+
+  // 受信中のChecksum
+  const receiveChecksumRef =
+  useRef("");
+
+  // 受信予定Frame総数
+  const receiveExpectedTotalRef =
+  useRef(0);
 
   // 送信Frameを一定間隔で切替
   useEffect(() => {
@@ -288,17 +341,60 @@ export const useConfigTransfer = () => {
       setQrImage("");
     };
 
+  // Config受信データと進捗状態を初期化
+  const resetReceiveState =
+    (): void => {
+      receiveRunningRef.current =
+        false;
+
+      receiveFrames.current.clear();
+
+      receiveTransferIdRef.current =
+        "";
+
+      receiveChecksumRef.current =
+        "";
+
+      receiveExpectedTotalRef.current =
+        0;
+
+      setTransferId("");
+      setReceivedCount(0);
+      setReceiveTotal(0);
+    };
+
   return {
+    // 送信・受信共通
     configMode,
+    transferId,
+
+    // 送信側
     sendFrames,
     currentFrame,
     qrImage,
-    transferId,
-
     startSendConfig,
     stopSendConfig,
 
-    // 第2段階の受信側移行まで一時的に公開
+    // 受信側の画面表示
+    receivedCount,
+    receiveTotal,
+    receiveStatus,
+
+    // 受信処理をHookへ完全移動するまで一時公開
+    receiveFrames,
+    receiveRunningRef,
+    receiveReaderRef,
+    receiveTransferIdRef,
+    receiveChecksumRef,
+    receiveExpectedTotalRef,
+
+    setReceivedCount,
+    setReceiveTotal,
+    setReceiveStatus,
+
+    resetReceiveState,
+
+    // 受信処理をHookへ完全移動するまで一時公開
     setConfigMode,
     setTransferId,
   };
