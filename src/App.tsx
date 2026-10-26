@@ -438,6 +438,33 @@ export default function App() {
     );
   };
 
+  // Blobデータを指定ファイル名でダウンロード
+  const downloadBlob = (
+    blob: Blob,
+    fileName: string
+  ): void => {
+    const url =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    try {
+      link.href = url;
+      link.download = fileName;
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+    } finally {
+      link.remove();
+
+      URL.revokeObjectURL(url);
+    }
+};
+  
   const exportProductionExcel =
     async () => {
 
@@ -485,10 +512,29 @@ export default function App() {
         "xlsx"
       );
 
-      XLSX.writeFile(
+    // 通常ExcelをBlobへ変換
+    const excelBuffer =
+      XLSX.write(
         workbook,
-        fileName
+        {
+          bookType: "xlsx",
+          type: "array",
+        }
       );
+
+    const blob =
+      new Blob(
+        [excelBuffer],
+        {
+          type:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }
+      );
+
+    downloadBlob(
+      blob,
+      fileName
+    );
 
     };
   
@@ -612,20 +658,11 @@ export default function App() {
         "QR"
       );
 
-    const url =
-      URL.createObjectURL(blob);
-
-    const a =
-      document.createElement("a");
-
-    a.href = url;
-    a.download = fileName;
-
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    URL.revokeObjectURL(url);
+    // QR付きExcelをダウンロード
+    downloadBlob(
+      blob,
+      fileName
+    );
 
     playSuccess();
     vibrateSuccess();
@@ -678,21 +715,15 @@ export default function App() {
         }
       );
 
-      const url =
-        URL.createObjectURL(blob);
-
-      const a =
-        document.createElement("a");
-
-      a.href = url;
-      a.download = fileName;
+      // CSVをダウンロード
+      downloadBlob(
+        blob,
+        fileName
+      );
 
       playSuccess();
       vibrateSuccess();
 
-      a.click();
-
-      URL.revokeObjectURL(url);
   };
 
   const loadExcelConfig = async (
