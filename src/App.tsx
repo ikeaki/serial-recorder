@@ -19,6 +19,24 @@ type ScanItem = {
   regex?: string;
 };
 
+// Productionで入力対象外となる項目名
+const PRODUCTION_EXCLUDED_NAMES =
+  new Set<string>([
+    "ConfigURL",
+    "Export Time",
+    "Model",
+  ]);
+
+
+// Productionの入力対象項目か判定する純粋関数
+const isProductionInputItem = (
+  item: ScanItem
+): boolean => {
+  return !PRODUCTION_EXCLUDED_NAMES.has(
+    item.name
+  );
+};
+
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -295,14 +313,11 @@ export default function App() {
 
             setItems(configItems);
 
+            // 最初の未入力Production項目を検索
             const nextIndex =
               configItems.findIndex(
                 (item: ScanItem) =>
-                  ![
-                    "ConfigURL",
-                    "Export Time",
-                    "Model",
-                  ].includes(item.name) &&
+                  isProductionInputItem(item) &&
                   !(scanData[item.name] ?? "")
                     .toString()
                     .trim()
@@ -350,14 +365,11 @@ export default function App() {
 
     // UIもクリア
     setResults({});
+
+    // 最初のProduction入力項目を取得
     const startIndex =
       items.findIndex(
-        item =>
-          ![
-            "ConfigURL",
-            "Export Time",
-            "Model",
-          ].includes(item.name)
+        isProductionInputItem
       );
 
     setCurrentIndex(startIndex);
@@ -739,14 +751,11 @@ export default function App() {
 
     setItems(items);
     setResults(defaultResults);
+
+    // 最初のProduction入力項目を取得
     const startIndex =
       items.findIndex(
-        item =>
-          ![
-            "ConfigURL",
-            "Export Time",
-            "Model",
-          ].includes(item.name)
+        isProductionInputItem
       );
 
     setCurrentIndex(startIndex);
@@ -777,25 +786,21 @@ export default function App() {
 
   };
 
-  const progressCount = items.filter(
-    item =>
-      ![
-        "Model",
-        "ConfigURL",
-        "Export Time",
-      ].includes(item.name)
-       &&
-      (results[item.name] ?? "").trim() !== ""
-  ).length;
+  // 入力済みProduction項目数
+  const progressCount =
+    items.filter(
+      item =>
+        isProductionInputItem(item) &&
+        (
+          results[item.name] ?? ""
+        ).trim() !== ""
+    ).length;
 
-  const totalCount = items.filter(
-    item =>
-    ![
-      "Model",
-      "ConfigURL",
-      "Export Time",
-    ].includes(item.name)
-  ).length;
+    // Production入力対象項目の総数
+    const totalCount =
+      items.filter(
+        isProductionInputItem
+      ).length;
 
   const showOverlay = (
     message: string,
@@ -2094,16 +2099,10 @@ export default function App() {
       setItems(restoredItems);
       setResults(restoredResults);
 
+      // 復元後の最初のProduction入力項目
       const startIndex =
         restoredItems.findIndex(
-          item =>
-            ![
-              "ConfigURL",
-              "Export Time",
-              "Model",
-            ].includes(
-              item.name
-            )
+          isProductionInputItem
         );
 
       setCurrentIndex(
