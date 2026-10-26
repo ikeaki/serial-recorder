@@ -144,15 +144,12 @@ export default function App() {
   const saveProductionRecord = async (
     data: any
   ) => {
-
     const db = await openDB();
-
     const tx =
       db.transaction(
         PROD_STORE_NAME,
         "readwrite"
       );
-
     const store =
       tx.objectStore(
         PROD_STORE_NAME
@@ -160,12 +157,10 @@ export default function App() {
 
     await new Promise<void>(
       (resolve, reject) => {
-
         const clearReq =
           store.clear();
 
         clearReq.onsuccess = () => {
-
           const addReq = store.add(data);
 
           addReq.onsuccess = () => {
@@ -179,12 +174,20 @@ export default function App() {
 
         clearReq.onerror =
           () => reject(clearReq.error);
-
       }
     );
-
   };
-  
+
+  const saveCurrentProduction = async (
+    nextResults: Record<string, string> = results
+  ) => {
+    await saveProductionRecord({
+      configItems: items,
+      ...nextResults,
+      updateTime:
+        new Date().toLocaleString(),
+    });
+  };
 
   const loadProductionHistory =
     async () => {
@@ -378,6 +381,50 @@ export default function App() {
 
   };
 
+  // Production出力ファイル名の共通生成
+  const createProductionFileName = (
+    extension: "xlsx" | "csv",
+    suffix?: string
+  ): string => {
+    const now = new Date();
+
+    const model =
+      (
+        results["Model"] ??
+        "Production"
+      ).replace(
+        /[\\/:*?"<>|]/g,
+        "_"
+      );
+
+    const dateText =
+      `${now.getFullYear()}` +
+      `${String(
+        now.getMonth() + 1
+      ).padStart(2, "0")}` +
+      `${String(
+        now.getDate()
+      ).padStart(2, "0")}`;
+
+    const timeText =
+      `${String(
+        now.getHours()
+      ).padStart(2, "0")}` +
+      `${String(
+        now.getMinutes()
+      ).padStart(2, "0")}`;
+
+    const suffixText =
+      suffix
+        ? `-${suffix}`
+        : "";
+
+    return (
+      `${model}${suffixText}-` +
+      `${dateText}-${timeText}.` +
+      extension
+    );
+  };
 
   const exportProductionExcel =
     async () => {
@@ -420,24 +467,11 @@ export default function App() {
       "Production"
     );
 
-    const now = new Date();
-
-    const model =
-      (results["Model"] ?? "Production")
-        .replace(/[\\/:*?"<>|]/g, "_");
-
+    // 通常Excelの出力ファイル名
     const fileName =
-      `${model}-${
-        now.getFullYear()
-      }${
-        String(now.getMonth() + 1).padStart(2, "0")
-      }${
-        String(now.getDate()).padStart(2, "0")
-      }-${
-        String(now.getHours()).padStart(2, "0")
-      }${
-        String(now.getMinutes()).padStart(2, "0")
-      }.xlsx`;
+      createProductionFileName(
+        "xlsx"
+      );
 
       XLSX.writeFile(
         workbook,
@@ -559,24 +593,12 @@ export default function App() {
       }
     );
 
-    const now = new Date();
-
-    const model =
-      (results["Model"] ?? "Production")
-        .replace(/[\\/:*?"<>|]/g, "_");
-
+    // QR付きExcelの出力ファイル名
     const fileName =
-      `${model}-QR-${
-        now.getFullYear()
-      }${
-        String(now.getMonth() + 1).padStart(2, "0")
-      }${
-        String(now.getDate()).padStart(2, "0")
-      }-${
-        String(now.getHours()).padStart(2, "0")
-      }${
-        String(now.getMinutes()).padStart(2, "0")
-      }.xlsx`;
+      createProductionFileName(
+        "xlsx",
+        "QR"
+      );
 
     const url =
       URL.createObjectURL(blob);
@@ -631,24 +653,11 @@ export default function App() {
         )
         .join("\r\n");
 
-      const now = new Date();
-
-      const model =
-        (results["Model"] ?? "Production")
-          .replace(/[\\/:*?"<>|]/g, "_");
-
+      // CSVの出力ファイル名
       const fileName =
-        `${model}-${
-          now.getFullYear()
-        }${
-          String(now.getMonth() + 1).padStart(2, "0")
-        }${
-          String(now.getDate()).padStart(2, "0")
-        }-${
-          String(now.getHours()).padStart(2, "0")
-        }${
-          String(now.getMinutes()).padStart(2, "0")
-        }.csv`;
+        createProductionFileName(
+          "csv"
+        );
 
       const blob = new Blob(
         ["\uFEFF" + csvText],
@@ -742,12 +751,6 @@ export default function App() {
 
     setCurrentIndex(startIndex);
 
-    await saveProductionRecord({
-    configItems: items,
-    ...defaultResults,
-    updateTime: new Date().toLocaleString(),
-    });
-
   };
 
   const loadConfig = (
@@ -806,6 +809,70 @@ export default function App() {
       setOverlayMessage("");
     }, 1500);
 
+  };
+
+  const applyProductionScan = async (
+    text: string
+  ): Promise<boolean> => {
+    if (
+      Object.values(results).includes(text)
+    ) {
+      setResult(
+        "⚠ Duplicate In Current Unit"
+      );
+      showOverlay(
+        "✕ DUP",
+        "#ff0000"
+      );
+      playError();
+      vibrateError();
+
+      return false;
+    }
+
+    const currentItem =
+      items[currentIndex];
+
+    if (!currentItem) {
+      setResult(
+        "Production Item Not Found"
+      );
+      showOverlay(
+        "✕ ITEM",
+        "#ff0000"
+      );
+      playError();
+      vibrateError();
+
+      return false;
+    }
+
+    const newResults = {
+      ...results,
+      [currentItem.name]: text,
+    };
+
+    setResults(newResults);
+
+    await saveCurrentProduction(
+      newResults
+    );
+
+    setCurrentIndex(prev =>
+      Math.min(
+        prev + 1,
+        items.length - 1
+      )
+    );
+
+    showOverlay(
+      "✓ OK",
+      "#00ff00"
+    );
+    playSuccess();
+    vibrateSuccess();
+
+    return true;
   };
 
   const getAudioContext = () => {
@@ -1165,70 +1232,22 @@ export default function App() {
         performance.now() - startTime <
         timeoutMs
       ) {
-        const canvas =
-          document.createElement("canvas");
 
-        canvas.width =
-          video.videoWidth;
+        // QR読取り用Canvasを2倍で切り出す
+        const captured =
+          createCroppedCameraCanvas(
+            video,
+            2
+          );
 
-        canvas.height =
-          video.videoHeight;
-
-        const ctx =
-          canvas.getContext("2d");
-
-        if (!ctx) {
+        if (!captured) {
           throw new Error(
-            "Canvas Context Error"
+            "Crop Canvas Create Error"
           );
         }
 
-        const drawHeight =
-          drawCameraFrame(
-            ctx,
-            canvas,
-            video
-          );
-
-        const {
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-        } = getScanAreaWH(
-          canvas.width,
-          drawHeight
-        );
-
-        const cropCanvas =
-          document.createElement("canvas");
-
-        cropCanvas.width =
-          Math.round(cropW * 2);
-
-        cropCanvas.height =
-          Math.round(cropH * 2);
-
-        const cropCtx =
-          cropCanvas.getContext("2d");
-
-        if (!cropCtx) {
-          throw new Error(
-            "Crop Canvas Context Error"
-          );
-        }
-
-        cropCtx.drawImage(
-          canvas,
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-          0,
-          0,
-          cropCanvas.width,
-          cropCanvas.height
-        );
+        const { cropCanvas } =
+          captured;
 
         const image =
           cropCanvas.toDataURL(
@@ -1314,67 +1333,15 @@ export default function App() {
 
         return;
       }
+      
+      const applied =
+        await applyProductionScan(text);
 
-      if (
-        tab === "prod" &&
-        Object.values(
-          results
-        ).includes(text)
-      ) {
-        setResult(
-          "⚠ Duplicate In Current Unit"
-        );
-
-        showOverlay(
-          "✕ DUP",
-          "#ff0000"
-        );
-
-        playError();
-        vibrateError();
-
+      if (!applied) {
         return;
       }
 
-      if (
-        tab === "prod" &&
-        items[currentIndex]
-      ) {
-        const itemName =
-          items[currentIndex].name;
-
-        const newResults = {
-          ...results,
-          [itemName]: text,
-        };
-
-        setResults(newResults);
-
-        await saveProductionRecord({
-          configItems: items,
-          ...newResults,
-          updateTime:
-            new Date()
-              .toLocaleString(),
-        });
-
-        setCurrentIndex(prev =>
-          Math.min(
-            prev + 1,
-            items.length - 1
-          )
-        );
-      }
-
-      setResult(text);
-
-      showOverlay(
-        "✓ OK",
-        "#00ff00"
-      );
-
-      playSuccess();
-    vibrateSuccess();
+      setResult(text);  
     } catch (err) {
       setResult("QR Scan Failed");
 
@@ -1397,48 +1364,50 @@ export default function App() {
     setOcrLoading(true);
 
     try {
+      // OCR読取り用Canvasを4倍で切り出す
+      const captured =
+        createCroppedCameraCanvas(
+          videoRef.current,
+          4
+        );
 
-      const canvas =
-        document.createElement("canvas");
+      if (!captured) {
+        setResult(
+          "Canvas Create Failed"
+        );
+        return;
+      }
 
-      canvas.width =
-        videoRef.current.videoWidth;
+      const {
+        sourceCanvas: canvas,
+        cropCanvas,
+        cropX,
+        cropY,
+        cropW,
+        cropH,
+      } = captured;
 
-      canvas.height =
-        videoRef.current.videoHeight;
-
+      console.log({
+        cropW,
+        cropH,
+        canvasW: cropCanvas.width,
+        canvasH: cropCanvas.height,
+      });
 
       const ctx =
         canvas.getContext("2d");
 
-      if (!ctx) return;
-
-      const drawHeight =
-        drawCameraFrame(
-        ctx,
-        canvas,
-        videoRef.current
+      if (ctx) {
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 5;
+        
+        ctx.strokeRect(
+          cropX,
+          cropY,
+          cropW,
+          cropH,
         );
-
-      const {
-        cropX,
-        cropY,
-        cropW,
-        cropH,
-      } = getScanAreaWH(
-        canvas.width,
-        drawHeight
-      );
-
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 5;
-      
-      ctx.strokeRect(
-        cropX,
-        cropY,
-        cropW,
-        cropH,
-      );
+      }
       
       canvas.style.width = "100%";
       canvas.style.maxWidth = "450px";
@@ -1450,36 +1419,6 @@ export default function App() {
       if (tab === "eval") {
         document.body.appendChild(canvas);
       }
-      const cropCanvas =
-        document.createElement("canvas");
-
-      cropCanvas.width = cropW * 4;
-      cropCanvas.height = cropH * 4;
-
-      console.log({
-        cropW,
-        cropH,
-        canvasW: cropCanvas.width,
-        canvasH: cropCanvas.height,
-      });
-
-
-      const cropCtx =
-        cropCanvas.getContext("2d");
-
-      if (!cropCtx) return;
-
-      cropCtx.drawImage(
-        canvas,
-        cropX,
-        cropY,
-        cropW,
-        cropH,
-        0,
-        0,
-        cropW * 4,
-        cropH * 4
-      );
 
       const thresholds = [
         120,
@@ -1686,63 +1625,16 @@ export default function App() {
         return;
       }
 
-      if (
-        tab === "prod" &&
-        Object.values(results).includes(text)
-      ) {
+      const applied =
+        await applyProductionScan(text);
 
-        playError();
-        vibrateError();
-
-        showOverlay("✕ DUP", "#ff0000");
-
-        setResult(
-          "⚠ Duplicate In Current Unit"
-        );
-
+      if (!applied) {
         return;
       }
-
-      showOverlay("✓ OK", "#00ff00");
-
-      playSuccess();
-      vibrateSuccess();
-
-      if (
-        tab === "prod" &&
-        items[currentIndex]
-      ) {
-
-        const itemName =
-          items[currentIndex].name;
-
-        const newResults = {
-          ...results,
-          [itemName]: text,
-        };
-
-        setResults(newResults);
-        
-        await saveProductionRecord({
-          configItems: items,
-          ...newResults,
-          updateTime:
-            new Date().toLocaleString(),
-        });
-
-        setCurrentIndex(prev =>
-          Math.min(
-            prev + 1,
-            items.length - 1
-          )
-        );
-      }
-
 
       setResult(
         `OCR: ${text} (${bestConfidence.toFixed(0)}%)`
       );
-
     } finally {
 
       setOcrLoading(false);
@@ -1878,32 +1770,40 @@ export default function App() {
       .join("");
   };
 
+  // Config受信中のデータ・進捗Stateを初期化
+  const resetReceiveState = () => {
+    receiveRunningRef.current =
+      false;
 
-  const stopReceiveConfig =
-    () => {
-      receiveRunningRef.current =
-        false;
+    receiveFrames.current.clear();
 
-      receiveReaderRef.current =
-        null;
+    receiveTransferIdRef.current =
+      "";
 
-      receiveFrames.current.clear();
+    receiveChecksumRef.current =
+      "";
 
-      receiveTransferIdRef.current =
-        "";
+    receiveExpectedTotalRef.current =
+      0;
 
-      receiveChecksumRef.current =
-        "";
+    setTransferId("");
+    setReceivedCount(0);
+    setReceiveTotal(0);
+  };
 
-      receiveExpectedTotalRef.current =
-        0;
+    // Config受信を停止
+    const stopReceiveConfig =
+      () => {
+        resetReceiveState();
 
-      setTransferId("");
-      setReceivedCount(0);
-      setReceiveTotal(0);
-      setConfigMode("none");
-      setReceiveStatus("Stopped");
-    };
+        // 停止時だけReaderを解放
+        receiveReaderRef.current =
+          null;
+
+        // 停止時固有の画面状態
+        setConfigMode("none");
+        setReceiveStatus("Stopped");
+      };
 
     const compressText = async (
       text: string
@@ -2290,26 +2190,16 @@ export default function App() {
     setScanWidth(60);
     setScanHeight(60);
 
-    receiveRunningRef.current = false;
+    // 前回の受信データと進捗を初期化
+    resetReceiveState();
 
-    receiveFrames.current.clear();
-
-    receiveTransferIdRef.current = "";
-    receiveChecksumRef.current = "";
-    receiveExpectedTotalRef.current = 0;
-
-    setTransferId("");
-    setReceivedCount(0);
-    setReceiveTotal(0);
-    setReceiveStatus("Waiting...");
-
+    // 受信開始時固有の画面状態
+    setReceiveStatus("Waiting...");    
     setConfigMode("receive");
 
+    // 初期化後に受信を開始
     receiveRunningRef.current = true;
-
-
-    receiveRunningRef.current = true;
-
+    
     const reader =
       new BrowserMultiFormatReader();
 
@@ -2341,80 +2231,23 @@ export default function App() {
       }
 
       try {
-        const canvas =
-          document.createElement(
-            "canvas"
+        // Config受信QR用Canvasを2倍で切り出す
+        const captured =
+          createCroppedCameraCanvas(
+            video,
+            2
           );
 
-        canvas.width =
-          video.videoWidth;
-
-        canvas.height =
-          video.videoHeight;
-
-        const ctx =
-          canvas.getContext("2d");
-
-        if (!ctx) {
+        if (!captured) {
           window.setTimeout(
             scanLoop,
             200
           );
-
           return;
         }
 
-        const drawHeight =
-          drawCameraFrame(
-            ctx,
-            canvas,
-            video
-          );
-
-        const {
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-        } = getScanAreaWH(
-          canvas.width,
-          drawHeight
-        );
-
-        const cropCanvas =
-          document.createElement(
-            "canvas"
-          );
-
-        cropCanvas.width =
-          Math.round(cropW * 2);
-
-        cropCanvas.height =
-          Math.round(cropH * 2);
-
-        const cropCtx =
-          cropCanvas.getContext("2d");
-
-        if (!cropCtx) {
-          window.setTimeout(
-            scanLoop,
-            200
-          );
-
-          return;
-        }
-
-        cropCtx.drawImage(
-          canvas,
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-          0,
-          0,
-          cropCanvas.width,
-          cropCanvas.height
-        );
+        const { cropCanvas } =
+          captured;
 
         const image =
           cropCanvas.toDataURL(
@@ -2685,6 +2518,80 @@ export default function App() {
       (height - cropH) / 2;
 
     return {
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+    };
+  };
+
+  // カメラ映像からスキャン範囲を切り出す共通処理
+  const createCroppedCameraCanvas = (
+    video: HTMLVideoElement,
+    scale: number
+  ) => {
+    const sourceCanvas =
+      document.createElement("canvas");
+
+    sourceCanvas.width =
+      video.videoWidth;
+    sourceCanvas.height =
+      video.videoHeight;
+
+    const sourceCtx =
+      sourceCanvas.getContext("2d");
+
+    if (!sourceCtx) {
+      return null;
+    }
+
+    const drawHeight =
+      drawCameraFrame(
+        sourceCtx,
+        sourceCanvas,
+        video
+      );
+
+    const {
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+    } = getScanAreaWH(
+      sourceCanvas.width,
+      drawHeight
+    );
+
+    const cropCanvas =
+      document.createElement("canvas");
+
+    cropCanvas.width =
+      Math.round(cropW * scale);
+    cropCanvas.height =
+      Math.round(cropH * scale);
+
+    const cropCtx =
+      cropCanvas.getContext("2d");
+
+    if (!cropCtx) {
+      return null;
+    }
+
+    cropCtx.drawImage(
+      sourceCanvas,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+      0,
+      0,
+      cropCanvas.width,
+      cropCanvas.height
+    );
+
+    return {
+      sourceCanvas,
+      cropCanvas,
       cropX,
       cropY,
       cropW,
@@ -3477,12 +3384,7 @@ export default function App() {
           <div
             onClick={async () => {
 
-              await saveProductionRecord({
-                configItems: items,
-                ...results,
-                updateTime:
-                  new Date().toLocaleString(),
-              });
+              await saveCurrentProduction();
 
               setCurrentIndex(prev =>
                 Math.max(0, prev - 1)
@@ -3616,12 +3518,9 @@ export default function App() {
 
               setResults(newResults);
 
-              await saveProductionRecord({
-                configItems: items,
-                ...newResults,
-                updateTime:
-                  new Date().toLocaleString(),
-              });
+              await saveCurrentProduction(
+                newResults
+              );
 
               setCurrentIndex(prev =>
                 Math.min(
@@ -3648,11 +3547,7 @@ export default function App() {
         <div
           onClick={async () => {
 
-            await saveProductionRecord({
-              configItems: items,
-              ...results,
-              updateTime: new Date().toLocaleString(),
-            });
+            await saveCurrentProduction();
 
             setCurrentIndex(prev =>
               Math.min(items.length - 1, prev + 1)
