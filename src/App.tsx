@@ -32,9 +32,13 @@ import {
   decompressText,
 } from "./utils/configTransfer";
 
-const DB_NAME = "serial-db";
+// productionDB関連
+import {
+  clearProductionStore,
+  loadProductionHistory,
+  saveProductionRecord,
+} from "./services/productionDb";
 
-const PROD_STORE_NAME = "production";
 const BUILD_DATE = __BUILD_DATE__;
 
 
@@ -134,77 +138,6 @@ export default function App() {
   const lastBeepRef = useRef(0);
   const lastErrorBeepRef = useRef(0);
 
-
-  const openDB = (): Promise<IDBDatabase> => {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 4);
-
-      request.onupgradeneeded = () => {
-
-        const db = request.result;
-
-        if (
-          !db.objectStoreNames.contains(
-            PROD_STORE_NAME
-          )
-        ) {
-          db.createObjectStore(
-            PROD_STORE_NAME,
-            {
-              keyPath: "id",
-              autoIncrement: true,
-            }
-          );
-        }
-      };
-
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  };
-
-  const saveProductionRecord = async (
-    data: any
-  ) => {
-    const db = await openDB();
-    const tx =
-      db.transaction(
-        PROD_STORE_NAME,
-        "readwrite"
-      );
-    const store =
-      tx.objectStore(
-        PROD_STORE_NAME
-      );
-
-    await new Promise<void>(
-      (resolve, reject) => {
-        const clearReq =
-          store.clear();
-
-        clearReq.onsuccess = () => {
-          const addReq = store.add(data);
-
-          addReq.onsuccess = () => {
-            resolve();
-          };
-
-          addReq.onerror = () => {
-            reject(addReq.error);
-          };
-        };
-
-        clearReq.onerror =
-          () => reject(clearReq.error);
-      }
-    );
-  };
-
   const saveCurrentProduction = async (
     nextResults: Record<string, string> = results
   ) => {
@@ -214,37 +147,6 @@ export default function App() {
       updateTime:
         new Date().toLocaleString(),
     });
-  };
-
-  const loadProductionHistory =
-    async () => {
-
-    const db = await openDB();
-
-    const tx =
-      db.transaction(
-        PROD_STORE_NAME,
-        "readonly"
-      );
-
-    const request =
-      tx
-        .objectStore(
-          PROD_STORE_NAME
-        )
-        .getAll();
-
-    return await new Promise<any[]>(
-      (resolve, reject) => {
-
-        request.onsuccess =
-          () => resolve(request.result);
-
-        request.onerror =
-          () => reject(request.error);
-
-      }
-    );
   };
 
   const loadFromOneDrive = async () => {
@@ -360,18 +262,8 @@ export default function App() {
   
   const clearProductionDB = async () => {
 
-    const db = await openDB();
-
-    const tx =
-      db.transaction(
-        PROD_STORE_NAME,
-        "readwrite"
-      );
-
-    tx.objectStore(
-      PROD_STORE_NAME
-    ).clear();
-
+    // IndexedDBのProductionデータを削除
+    await clearProductionStore();
     // UIもクリア
     setResults({});
 
