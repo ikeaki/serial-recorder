@@ -37,7 +37,7 @@ export const createProductionFileName = (
 
   const model =
     (
-      modelName ??
+      modelName?.trim() ||
       "Production"
     ).replace(
       /[\\/:*?"<>|]/g,
