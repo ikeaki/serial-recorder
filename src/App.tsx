@@ -12,6 +12,12 @@ import {
   downloadBlob,
 } from "./utils/file";
 
+// Production入力対象判定
+import {
+  isProductionInputItem,
+} from "./utils/production";
+
+
 const DB_NAME = "serial-db";
 
 const PROD_STORE_NAME = "production";
@@ -25,23 +31,6 @@ type ScanItem = {
   regex?: string;
 };
 
-// Productionで入力対象外となる項目名
-const PRODUCTION_EXCLUDED_NAMES =
-  new Set<string>([
-    "ConfigURL",
-    "Export Time",
-    "Model",
-  ]);
-
-
-// Productionの入力対象項目か判定する純粋関数
-const isProductionInputItem = (
-  item: ScanItem
-): boolean => {
-  return !PRODUCTION_EXCLUDED_NAMES.has(
-    item.name
-  );
-};
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
