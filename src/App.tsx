@@ -6,6 +6,11 @@ import ExcelJS from "exceljs";
 import QRCode from "qrcode";
 import * as pako from "pako";
 
+// Blobダウンロード共通関数
+import {
+  downloadBlob,
+} from "./utils/file";
+
 const DB_NAME = "serial-db";
 
 const PROD_STORE_NAME = "production";
@@ -438,33 +443,7 @@ export default function App() {
     );
   };
 
-  // Blobデータを指定ファイル名でダウンロード
-  const downloadBlob = (
-    blob: Blob,
-    fileName: string
-  ): void => {
-    const url =
-      URL.createObjectURL(blob);
 
-    const link =
-      document.createElement("a");
-
-    try {
-      link.href = url;
-      link.download = fileName;
-
-      document.body.appendChild(
-        link
-      );
-
-      link.click();
-    } finally {
-      link.remove();
-
-      URL.revokeObjectURL(url);
-    }
-};
-  
   const exportProductionExcel =
     async () => {
 
