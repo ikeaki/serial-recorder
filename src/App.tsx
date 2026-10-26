@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
-import { createWorker } from "tesseract.js";
 
 import QRCode from "qrcode";
 
@@ -57,6 +56,10 @@ import {
   useFeedback,
 } from "./hooks/useFeedback";
 
+// OCR Scanner管理
+import {
+  useScanner,
+} from "./hooks/useScanner";
 
 const BUILD_DATE = __BUILD_DATE__;
 
@@ -64,10 +67,15 @@ const BUILD_DATE = __BUILD_DATE__;
 export default function App() {
 
   const { playSuccess, playError, vibrateSuccess, vibrateError } = useFeedback();
+
+  // OCR WorkerをHookから取得
+  const {
+    workerRef,
+    ocrReady,
+  } = useScanner();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-  const workerRef = useRef<any>(null);
-  const [ocrReady, setOcrReady] = useState(false);
   const [result, setResult] = useState("Not Scanned");
   const [scanning, setScanning] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -487,25 +495,6 @@ export default function App() {
     return true;
   };
 
-  useEffect(() => {
-
-    async function initOCR() {
-
-      const worker =
-        await createWorker("eng");
-
-      workerRef.current = worker;
-
-      setOcrReady(true);
-    }
-
-    initOCR();
-
-    return () => {
-      workerRef.current?.terminate();
-    };
-
-  }, []);
   
   useEffect(() => {
     async function startCamera() {
@@ -973,6 +962,18 @@ export default function App() {
 
     if (!videoRef.current) return;
 
+    // OCR Workerをローカル変数として保持
+    const worker =
+      workerRef.current;
+
+    if (!worker) {
+      setResult(
+        "OCR Not Ready"
+      );
+
+      return;
+    }
+
     setOcrLoading(true);
 
     try {
@@ -1116,9 +1117,8 @@ export default function App() {
           );
 
         const result =
-          await workerRef.current.recognize(
+          await worker.recognize(
             image,
-            "eng",
             {
               tessedit_char_whitelist:
               "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ=",
