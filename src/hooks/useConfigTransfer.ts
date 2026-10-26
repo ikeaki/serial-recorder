@@ -13,14 +13,23 @@ import {
 import QRCode from "qrcode";
 
 import {
+  base64ToBytes,
   bytesToBase64,
   calculateChecksum,
   compressText,
+  decompressText,
 } from "../utils/configTransfer";
 
 import type {
   ScanItem,
 } from "../types";
+
+type ReceivedConfigItem = {
+  n: string;
+  t?: string;
+  r?: string;
+  v?: string;
+};
 
 export type ConfigMode =
   | "none"
@@ -34,6 +43,30 @@ export type StartSendResult =
     }
   | {
       status: "failed";
+    };
+
+export type RestoredConfig = {
+  items: ScanItem[];
+  results:
+    Record<string, string>;
+  transferId: string;
+  checksum: string;
+};
+
+export type ProcessReceiveFrameResult =
+  | {
+      status:
+        | "ignored"
+        | "receiving";
+    }
+  | {
+      status: "completed";
+      config:
+        RestoredConfig;
+    }
+  | {
+      status: "failed";
+      message: string;
     };
 
 type ProductionResults =
@@ -363,6 +396,298 @@ export const useConfigTransfer = () => {
       setReceiveTotal(0);
     };
 
+  // Config QR Frameを受信・検証・復元
+  const processReceiveFrame =
+    async (
+      text: string
+    ): Promise<
+      ProcessReceiveFrameResult
+    > => {
+      if (
+        !text.startsWith(
+          "CFGZ|"
+        )
+      ) {
+        return {
+          status: "ignored",
+        };
+      }
+
+      const parts =
+        text.split("|");
+
+      if (
+        parts.length !== 6
+      ) {
+        return {
+          status: "ignored",
+        };
+      }
+
+      const receivedTransferId =
+        parts[1];
+
+      const index =
+        Number(parts[2]);
+
+      const total =
+        Number(parts[3]);
+
+      const checksum =
+        parts[4];
+
+      const chunk =
+        parts[5];
+
+      if (
+        !receivedTransferId ||
+        !checksum ||
+        !chunk ||
+        !Number.isInteger(
+          index
+        ) ||
+        !Number.isInteger(
+          total
+        ) ||
+        index < 1 ||
+        total < 1 ||
+        index > total
+      ) {
+        return {
+          status: "ignored",
+        };
+      }
+
+      // 最初のFrameで受信情報を確定
+      if (
+        !receiveTransferIdRef
+          .current
+      ) {
+        receiveTransferIdRef
+          .current =
+          receivedTransferId;
+
+        receiveChecksumRef
+          .current =
+          checksum;
+
+        receiveExpectedTotalRef
+          .current =
+          total;
+
+        setTransferId(
+          receivedTransferId
+        );
+      }
+
+      // 別TransferのFrameは無視
+      if (
+        receiveTransferIdRef
+          .current !==
+        receivedTransferId
+      ) {
+        return {
+          status: "ignored",
+        };
+      }
+
+      // 異なるChecksumのFrameは無視
+      if (
+        receiveChecksumRef
+          .current !==
+        checksum
+      ) {
+        return {
+          status: "ignored",
+        };
+      }
+
+      // 異なる総Frame数は無視
+      if (
+        receiveExpectedTotalRef
+          .current !==
+        total
+      ) {
+        return {
+          status: "ignored",
+        };
+      }
+
+      // 受信済みFrameは無視
+      if (
+        receiveFrames.current.has(
+          index
+        )
+      ) {
+        return {
+          status: "ignored",
+        };
+      }
+
+      receiveFrames.current.set(
+        index,
+        chunk
+      );
+
+      const count =
+        receiveFrames.current
+          .size;
+
+      setReceivedCount(
+        count
+      );
+
+      setReceiveTotal(
+        total
+      );
+
+      setReceiveStatus(
+        `Receiving ${count} / ${total}`
+      );
+
+      if (
+        count !== total
+      ) {
+        return {
+          status: "receiving",
+        };
+      }
+
+      receiveRunningRef.current =
+        false;
+
+      setReceiveStatus(
+        "Checking Data..."
+      );
+
+      try {
+        const chunks:
+          string[] = [];
+
+        for (
+          let frame = 1;
+          frame <= total;
+          frame++
+        ) {
+          const receivedChunk =
+            receiveFrames.current
+              .get(frame);
+
+          if (
+            !receivedChunk
+          ) {
+            throw new Error(
+              `Missing Frame ${frame}`
+            );
+          }
+
+          chunks.push(
+            receivedChunk
+          );
+        }
+
+        const base64 =
+          chunks.join("");
+
+        const calculatedChecksum =
+          await calculateChecksum(
+            base64
+          );
+
+        if (
+          calculatedChecksum !==
+          checksum
+        ) {
+          throw new Error(
+            "Checksum Mismatch"
+          );
+        }
+
+        setReceiveStatus(
+          "Restoring Config..."
+        );
+
+        const compressedBytes =
+          base64ToBytes(
+            base64
+          );
+
+        const json =
+          await decompressText(
+            compressedBytes
+          );
+
+        const receivedConfig =
+          JSON.parse(
+            json
+          ) as ReceivedConfigItem[];
+
+        const restoredItems:
+          ScanItem[] =
+            receivedConfig.map(
+              item => ({
+                name:
+                  item.n,
+                type:
+                  item.t ?? "",
+                regex:
+                  item.r ?? "",
+                value:
+                  item.v ?? "",
+              })
+            );
+
+        const restoredResults =
+          Object.fromEntries(
+            restoredItems.map(
+              item => [
+                item.name,
+                item.value ?? "",
+              ]
+            )
+          ) as Record<
+            string,
+            string
+          >;
+
+        setReceiveStatus(
+          "Checksum OK / Config Loaded"
+        );
+
+        return {
+          status: "completed",
+          config: {
+            items:
+              restoredItems,
+            results:
+              restoredResults,
+            transferId:
+              receivedTransferId,
+            checksum,
+          },
+        };
+      } catch (error) {
+        console.error(
+          "Config Restore Error:",
+          error
+        );
+
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Restore Failed";
+
+        setReceiveStatus(
+          message
+        );
+
+        return {
+          status: "failed",
+          message,
+        };
+      }
+    };
+    
   return {
     // 送信・受信共通
     configMode,
@@ -372,14 +697,17 @@ export const useConfigTransfer = () => {
     sendFrames,
     currentFrame,
     qrImage,
-    startSendConfig,
-    stopSendConfig,
+
 
     // 受信側の画面表示
     receivedCount,
     receiveTotal,
     receiveStatus,
 
+    startSendConfig,
+    stopSendConfig,
+
+    processReceiveFrame,
     // 受信処理をHookへ完全移動するまで一時公開
     receiveFrames,
     receiveRunningRef,

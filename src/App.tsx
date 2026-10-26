@@ -14,13 +14,6 @@ import {
   getScanAreaWH,
 } from "./utils/camera";
 
-//Config QR 転送関連
-import {
-  base64ToBytes,
-  calculateChecksum,
-  decompressText,
-} from "./utils/configTransfer";
-
 // Config QR送受信管理
 import {
   useConfigTransfer,
@@ -102,21 +95,17 @@ export default function App() {
     receiveStatus,
 
     // 受信処理移動まで一時的に取得
-    receiveFrames,
     receiveRunningRef,
     receiveReaderRef,
-    receiveTransferIdRef,
-    receiveChecksumRef,
-    receiveExpectedTotalRef,
 
-    setReceivedCount,
-    setReceiveTotal,
     setReceiveStatus,
 
     resetReceiveState,
 
+    processReceiveFrame:
+      processReceiveFrameFromHook,
+
     setConfigMode,
-    setTransferId,
   } = useConfigTransfer();
 
   const [results, setResults] = useState<Record<string, string>>({});
@@ -1193,231 +1182,71 @@ export default function App() {
         setReceiveStatus("Stopped");
       };
 
-
-    const processReceiveFrame =
-      async (
-        text: string
-      ) => {
-    if (!text.startsWith("CFGZ|")) {
-      return;
-    }
-
-    const parts =
-      text.split("|");
-
-    if (parts.length !== 6) {
-      return;
-    }
-
-    const receivedTransferId =
-      parts[1];
-
-    const index =
-      Number(parts[2]);
-
-    const total =
-      Number(parts[3]);
-
-    const checksum =
-      parts[4];
-
-    const chunk =
-      parts[5];
-
-    if (
-      !receivedTransferId ||
-      !checksum ||
-      !chunk ||
-      !Number.isInteger(
-        index
-      ) ||
-      !Number.isInteger(
-        total
-      ) ||
-      index < 1 ||
-      total < 1 ||
-      index > total
-    ) {
-      return;
-    }
-
-    if (
-      !receiveTransferIdRef
-        .current
-    ) {
-      receiveTransferIdRef
-        .current =
-        receivedTransferId;
-
-      receiveChecksumRef
-        .current =
-        checksum;
-
-      receiveExpectedTotalRef
-        .current =
-        total;
-
-      setTransferId(
-        receivedTransferId
-      );
-    }
-
-    if (
-      receiveTransferIdRef
-        .current !==
-      receivedTransferId
-    ) {
-      return;
-    }
-
-    if (
-      receiveChecksumRef
-        .current !==
-      checksum
-    ) {
-      return;
-    }
-
-    if (
-      receiveExpectedTotalRef
-        .current !==
-      total
-    ) {
-      return;
-    }
-
-    if (
-      receiveFrames.current.has(
-        index
-      )
-    ) {
-      return;
-    }
-
-    receiveFrames.current.set(
-      index,
-      chunk
-    );
-
-    const count =
-      receiveFrames.current
-        .size;
-
-    setReceivedCount(
-      count
-    );
-
-    setReceiveTotal(
-      total
-    );
-
-    setReceiveStatus(
-      `Receiving ${count} / ${total}`
-    );
-
-    if (
-      count !== total
-    ) {
-      return;
-    }
-
-    receiveRunningRef.current =
-      false;
-
-    setReceiveStatus(
-      "Checking Data..."
-    );
-
-    try {
-      const chunks:
-        string[] = [];
-
-      for (
-        let frame = 1;
-        frame <= total;
-        frame++
-      ) {
-        const receivedChunk =
-          receiveFrames.current.get(
-            frame
-          );
-
-        if (
-          !receivedChunk
-        ) {
-          throw new Error(
-            `Missing Frame ${frame}`
-          );
-        }
-
-        chunks.push(
-          receivedChunk
-        );
-      }
-
-      const base64 =
-        chunks.join("");
-
-      const calculatedChecksum =
-        await calculateChecksum(
-          base64
+  // Hookで復元したConfigをAppへ反映
+  const processReceiveFrame =
+    async (
+      text: string
+    ): Promise<void> => {
+      const receiveResult =
+        await processReceiveFrameFromHook(
+          text
         );
 
       if (
-        calculatedChecksum !==
-        checksum
+        receiveResult.status ===
+          "ignored" ||
+        receiveResult.status ===
+          "receiving"
       ) {
-        throw new Error(
-          "Checksum Mismatch"
-        );
+        return;
       }
 
-      setReceiveStatus(
-        "Restoring Config..."
-      );
-
-      const compressedBytes =
-        base64ToBytes(base64);
-
-      const json =
-        await decompressText(
-          compressedBytes
+      if (
+        receiveResult.status ===
+        "failed"
+      ) {
+        setResult(
+          `Received Config Failed: ` +
+          receiveResult.message
         );
 
-      const receivedConfig =
-        JSON.parse(json) as Array<{
-          n: string;
-          t?: string;
-          r?: string;
-          v?: string;
-        }>;
+        showOverlay(
+          "✕ CONFIG",
+          "#ff0000"
+        );
 
-      const restoredItems:
-        ScanItem[] =
-          receivedConfig.map(
-            item => ({
-              name: item.n,
-              type: item.t ?? "",
-              regex: item.r ?? "",
-              value: item.v ?? "",
-            })
-          );
+        playError();
+        vibrateError();
 
-      const restoredResults:
-        Record<string, string> =
-          Object.fromEntries(
-            restoredItems.map(
-              item => [
-                item.name,
-                item.value ?? "",
-              ]
-            )
-          );
+        return;
+      }
 
-      setItems(restoredItems);
-      setResults(restoredResults);
+      if (
+        receiveResult.status !==
+        "completed"
+      ) {
+        return;
+      }
 
-      // 復元後の最初のProduction入力項目
+      const {
+        items:
+          restoredItems,
+        results:
+          restoredResults,
+        transferId:
+          receivedTransferId,
+        checksum,
+      } =
+        receiveResult.config;
+
+      setItems(
+        restoredItems
+      );
+
+      setResults(
+        restoredResults
+      );
+
       const startIndex =
         restoredItems.findIndex(
           isProductionInputItem
@@ -1429,27 +1258,21 @@ export default function App() {
           : 0
       );
 
-      await saveProductionRecord(
-        {
-          configItems:
-            restoredItems,
+      await saveProductionRecord({
+        configItems:
+          restoredItems,
 
-          ...restoredResults,
+        ...restoredResults,
 
-          updateTime:
-            new Date()
-              .toLocaleString(),
+        updateTime:
+          new Date()
+            .toLocaleString(),
 
-          transferId:
-            receivedTransferId,
+        transferId:
+          receivedTransferId,
 
-          checksum,
-        }
-      );
-
-      setReceiveStatus(
-        "Checksum OK / Config Loaded"
-      );
+        checksum,
+      });
 
       setResult(
         "Received Config Loaded"
@@ -1462,34 +1285,7 @@ export default function App() {
 
       playSuccess();
       vibrateSuccess();
-    } catch (err) {
-      console.error(
-        "Config Restore Error:",
-        err
-      );
-
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Restore Failed";
-
-      setReceiveStatus(
-        message
-      );
-
-      setResult(
-        `Received Config Failed: ${message}`
-      );
-
-      showOverlay(
-        "✕ CONFIG",
-        "#ff0000"
-      );
-
-      playError();
-      vibrateError();
-    }
-  };
+    };
 
 
   const startReceiveConfig = async () => {
