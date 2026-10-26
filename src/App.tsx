@@ -68,16 +68,10 @@ export default function App() {
 
   const { playSuccess, playError, vibrateSuccess, vibrateError } = useFeedback();
 
-  // OCR WorkerをHookから取得
-  const {
-    workerRef,
-    ocrReady,
-  } = useScanner();
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const [result, setResult] = useState("Not Scanned");
-  const [scanning, setScanning] = useState(false);
+
   const [ocrLoading, setOcrLoading] = useState(false);
   const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth, setScanWidth] = useState(50);
@@ -147,6 +141,22 @@ export default function App() {
   const cropTopRate = 0.2;
   const cropBottomRate = 0.2;
   const isMobile = window.innerWidth <= 768;
+
+  const {
+    workerRef,
+    ocrReady,
+    scanning,
+    scanQr:
+      scanQrFromCamera,
+  } = useScanner({
+    videoRef,
+    scanWidth,
+    scanHeight,
+    isMobile,
+    cropTopRate,
+    cropBottomRate,
+  });
+
   const trackRef = useRef<MediaStreamTrack | null>(null);
   const pressTimer = useRef<number | null>(null);
 
@@ -791,160 +801,37 @@ export default function App() {
     sendFrames
   ]);  
   
+  // QR読取り結果を画面へ反映
   const scanQr = async () => {
-    if (scanning) {
-      return;
-    }
-
-    const video =
-      videoRef.current;
+    const scanResult =
+      await scanQrFromCamera();
 
     if (
-      !video ||
-      video.readyState < 2 ||
-      video.videoWidth === 0 ||
-      video.videoHeight === 0
+      scanResult.status ===
+      "camera-not-ready"
     ) {
-      setResult("Camera Not Ready");
-      showOverlay("✕ CAMERA", "#ff0000");
+      setResult(
+        "Camera Not Ready"
+      );
+
+      showOverlay(
+        "✕ CAMERA",
+        "#ff0000"
+      );
+
       playError();
       vibrateError();
+
       return;
     }
 
-    setScanning(true);
-
-    const reader =
-      new BrowserMultiFormatReader();
-
-    const timeoutMs = 2000;
-    const scanIntervalMs = 120;
-    const startTime = performance.now();
-
-    let decodedText: string | null = null;
-
-    try {
-      while (
-        performance.now() - startTime <
-        timeoutMs
-      ) {
-
-      // QR読取り用Canvasを2倍で切り出す
-      const captured =
-        createCroppedCameraCanvas(
-          video,
-          2,
-          scanWidth,
-          scanHeight,
-          isMobile,
-          cropTopRate,
-          cropBottomRate
-        );
-
-        if (!captured) {
-          throw new Error(
-            "Crop Canvas Create Error"
-          );
-        }
-
-        const { cropCanvas } =
-          captured;
-
-        const image =
-          cropCanvas.toDataURL(
-            "image/png"
-          );
-
-        const img =
-          document.createElement("img");
-
-        img.src = image;
-
-        await new Promise<void>(
-          (resolve, reject) => {
-            img.onload = () =>
-              resolve();
-
-            img.onerror = () =>
-              reject(
-                new Error(
-                  "Image Load Error"
-                )
-              );
-          }
-        );
-
-        try {
-          const scanResult =
-            await reader
-              .decodeFromImageElement(
-                img
-              );
-
-          const text =
-            scanResult
-              .getText()
-              .trim();
-
-          if (text) {
-            decodedText = text;
-            break;
-          }
-        } catch {
-          // この画像で読めなければ
-          // 次の画像を解析する
-        }
-
-        await new Promise<void>(
-          resolve => {
-            window.setTimeout(
-              resolve,
-              scanIntervalMs
-            );
-          }
-        );
-      }
-
-      if (!decodedText) {
-        setResult("Scan Timeout");
-
-        showOverlay(
-          "✕ QR",
-          "#ff0000"
-        );
-
-        playError();
-        vibrateError();
-
-        return;
-      }
-
-      const text = decodedText;
-
-      if (tab === "eval") {
-        setResult(text);
-
-        showOverlay(
-          "✓ OK",
-          "#00ff00"
-        );
-
-        playSuccess();
-        vibrateSuccess();
-
-        return;
-      }
-      
-      const applied =
-        await applyProductionScan(text);
-
-      if (!applied) {
-        return;
-      }
-
-      setResult(text);  
-    } catch (err) {
-      setResult("QR Scan Failed");
+    if (
+      scanResult.status ===
+      "timeout"
+    ) {
+      setResult(
+        "Scan Timeout"
+      );
 
       showOverlay(
         "✕ QR",
@@ -953,9 +840,64 @@ export default function App() {
 
       playError();
       vibrateError();
-    } finally {
-      setScanning(false);
+
+      return;
     }
+
+    if (
+      scanResult.status ===
+      "failed"
+    ) {
+      setResult(
+        "QR Scan Failed"
+      );
+
+      showOverlay(
+        "✕ QR",
+        "#ff0000"
+      );
+
+      playError();
+      vibrateError();
+
+      return;
+    }
+
+    // successであることを明示
+    if (
+      scanResult.status !==
+      "success"
+    ) {
+      return;
+    }
+
+    const text =
+      scanResult.text;
+
+    if (tab === "eval") {
+      setResult(text);
+
+      showOverlay(
+        "✓ OK",
+        "#00ff00"
+      );
+
+      playSuccess();
+      vibrateSuccess();
+
+      return;
+    }
+
+    const applied =
+      await applyProductionScan(
+        text
+      );
+
+    if (!applied) {
+      return;
+    }
+
+    setResult(text);
   };
   
   const runOCR = async () => {
