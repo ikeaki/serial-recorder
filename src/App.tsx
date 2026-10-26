@@ -19,6 +19,7 @@ import {
 
 // スキャン範囲計算
 import {
+  drawCameraFrame,
   getScanAreaWH,
 } from "./utils/camera";
 
@@ -957,12 +958,16 @@ export default function App() {
 
         if (ctx) {
 
-          const drawHeight =
-            drawCameraFrame(
-              ctx,
-              canvas,
-              video
-            );
+        // カメラプレビューを描画
+        const drawHeight =
+          drawCameraFrame(
+            ctx,
+            canvas,
+            video,
+            isMobile,
+            cropTopRate,
+            cropBottomRate
+          );
 
           // 現在のスキャン幅・高さで表示範囲を計算
           const {
@@ -2379,72 +2384,6 @@ export default function App() {
       navigator.vibrate([400,100,100]);
     }
   };
-  
-  const drawCameraFrame = (
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-    video: HTMLVideoElement
-  ) => {
-
-    if (isMobile) {
-
-      const srcY =
-        video.videoHeight * cropTopRate;
-
-      const srcH =
-        video.videoHeight *
-        (1 - cropTopRate - cropBottomRate);
-
-      const drawHeight =
-        canvas.width *
-        (srcH / video.videoWidth);
-
-      canvas.height = drawHeight;
-
-      ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      ctx.drawImage(
-        video,
-        0,
-        srcY,
-        video.videoWidth,
-        srcH,
-        0,
-        0,
-        canvas.width,
-        drawHeight
-      );
-
-      return drawHeight;
-
-    }
-
-    canvas.height =
-      video.videoHeight;
-
-    ctx.clearRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    ctx.drawImage(
-      video,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    return canvas.height;
-  };
-
 
   // カメラ映像からスキャン範囲を切り出す共通処理
   const createCroppedCameraCanvas = (
@@ -2466,11 +2405,15 @@ export default function App() {
       return null;
     }
 
+    // 切り出し元となるカメラ映像を描画
     const drawHeight =
       drawCameraFrame(
         sourceCtx,
         sourceCanvas,
-        video
+        video,
+        isMobile,
+        cropTopRate,
+        cropBottomRate
       );
 
     // 現在のスキャン幅・高さで切り出し範囲を計算
