@@ -149,12 +149,6 @@ export const useConfigTransfer = () => {
   const receiveRunningRef =
   useRef(false);
 
-  // Config QR受信用Reader
-  const receiveReaderRef =
-  useRef<
-      BrowserMultiFormatReader | null
-  >(null);
-
   // 受信済みFrame数
   const [
   receivedCount,
@@ -436,10 +430,6 @@ export const useConfigTransfer = () => {
       // 受信Frame・進捗・識別情報を初期化
       resetReceiveState();
 
-      // 現在のReader参照を解放
-      receiveReaderRef.current =
-        null;
-
       // 送受信を行っていない状態へ戻す
       setConfigMode("none");
 
@@ -492,9 +482,6 @@ export const useConfigTransfer = () => {
 
       const reader =
         new BrowserMultiFormatReader();
-
-      receiveReaderRef.current =
-        reader;
 
       // Config QRを一定間隔で読み取る
       const scanLoop =
