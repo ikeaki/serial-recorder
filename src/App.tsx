@@ -52,11 +52,18 @@ import type {
   ScanItem,
 } from "./types";
 
+// 音・振動フィードバック
+import {
+  useFeedback,
+} from "./hooks/useFeedback";
+
 
 const BUILD_DATE = __BUILD_DATE__;
 
 
 export default function App() {
+
+  const { playSuccess, playError, vibrateSuccess, vibrateError } = useFeedback();
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<any>(null);
@@ -127,7 +134,6 @@ export default function App() {
   const lastExportClick = useRef(0);
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   const [zoom, setZoom] = useState(1);
   const cropTopRate = 0.2;
@@ -141,8 +147,7 @@ export default function App() {
   const [overlayMessage, setOverlayMessage] = useState("");
 
   const [overlayColor, setOverlayColor] = useState("#00ff00");
-  const lastBeepRef = useRef(0);
-  const lastErrorBeepRef = useRef(0);
+
 
   const saveCurrentProduction = async (
     nextResults: Record<string, string> = results
@@ -480,18 +485,6 @@ export default function App() {
     vibrateSuccess();
 
     return true;
-  };
-
-  const getAudioContext = () => {
-
-    if (!audioContextRef.current) {
-
-      audioContextRef.current =
-        new AudioContext();
-
-    }
-
-    return audioContextRef.current;
   };
 
   useEffect(() => {
@@ -1887,90 +1880,6 @@ export default function App() {
     }
   };
     
-  const playSuccess = () => {
-
-    const now = Date.now();
-
-    if (
-      now - lastBeepRef.current < 200
-    ) {
-      return;
-    }
-
-    lastBeepRef.current = now;
-
-    const audioContext =
-      getAudioContext();
-
-    const oscillator =
-      audioContext.createOscillator();
-
-    const gain =
-      audioContext.createGain();
-
-    oscillator.type = "sine";
-    oscillator.frequency.value = 1200;
-
-    gain.gain.value = 0.3;
-
-    oscillator.connect(gain);
-    gain.connect(audioContext.destination);
-
-    oscillator.start();
-
-    oscillator.stop(
-      audioContext.currentTime + 0.1
-    );
-  };
-
-  const playError = () => {
-
-    const now = Date.now();
-
-    if (
-      now - lastErrorBeepRef.current < 200
-    ) {
-      return;
-    }
-
-    lastErrorBeepRef.current = now;
-
-    const audioContext =
-      getAudioContext();
-
-    const oscillator =
-      audioContext.createOscillator();
-
-    const gain =
-      audioContext.createGain();
-
-    oscillator.type = "square";
-    oscillator.frequency.value = 300;
-
-    gain.gain.value = 0.1;
-
-    oscillator.connect(gain);
-    gain.connect(audioContext.destination);
-
-    oscillator.start();
-
-    oscillator.stop(
-      audioContext.currentTime + 0.15
-    );
-  };
-
-  const vibrateSuccess = () => {
-    if ("vibrate" in navigator) {
-      navigator.vibrate(100);
-    }
-  };
-
-  const vibrateError = () => {
-    if ("vibrate" in navigator) {
-      navigator.vibrate([400,100,100]);
-    }
-  };
-
 
   return (
     <div
