@@ -39,15 +39,14 @@ import {
   saveProductionRecord,
 } from "./services/productionDb";
 
+
+// ConfigおよびProductionの項目定義
+import type {
+  ScanItem,
+} from "./types";
+
+
 const BUILD_DATE = __BUILD_DATE__;
-
-
-type ScanItem = {
-  name: string;
-  type?: string;
-  value?: string;
-  regex?: string;
-};
 
 
 export default function App() {
