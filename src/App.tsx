@@ -6,8 +6,9 @@ import ExcelJS from "exceljs";
 import QRCode from "qrcode";
 import * as pako from "pako";
 
-// Blobダウンロード共通関数
+// App.tsx import部分
 import {
+  createProductionFileName,
   downloadBlob,
 } from "./utils/file";
 
@@ -398,51 +399,6 @@ export default function App() {
 
   };
 
-  // Production出力ファイル名の共通生成
-  const createProductionFileName = (
-    extension: "xlsx" | "csv",
-    suffix?: string
-  ): string => {
-    const now = new Date();
-
-    const model =
-      (
-        results["Model"] ??
-        "Production"
-      ).replace(
-        /[\\/:*?"<>|]/g,
-        "_"
-      );
-
-    const dateText =
-      `${now.getFullYear()}` +
-      `${String(
-        now.getMonth() + 1
-      ).padStart(2, "0")}` +
-      `${String(
-        now.getDate()
-      ).padStart(2, "0")}`;
-
-    const timeText =
-      `${String(
-        now.getHours()
-      ).padStart(2, "0")}` +
-      `${String(
-        now.getMinutes()
-      ).padStart(2, "0")}`;
-
-    const suffixText =
-      suffix
-        ? `-${suffix}`
-        : "";
-
-    return (
-      `${model}${suffixText}-` +
-      `${dateText}-${timeText}.` +
-      extension
-    );
-  };
-
 
   const exportProductionExcel =
     async () => {
@@ -477,9 +433,10 @@ export default function App() {
       "Production"
     );
 
-    // 通常Excelの出力ファイル名
+    // QRなしExcelのファイル名
     const fileName =
       createProductionFileName(
+        results["Model"],
         "xlsx"
       );
 
@@ -622,9 +579,10 @@ export default function App() {
       }
     );
 
-    // QR付きExcelの出力ファイル名
+    // QR付きExcelのファイル名
     const fileName =
       createProductionFileName(
+        results["Model"],
         "xlsx",
         "QR"
       );
@@ -664,9 +622,10 @@ export default function App() {
         )
         .join("\r\n");
 
-      // CSVの出力ファイル名
+      // CSVのファイル名
       const fileName =
         createProductionFileName(
+          results["Model"],
           "csv"
         );
 
