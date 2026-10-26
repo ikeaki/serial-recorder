@@ -4,7 +4,6 @@ import * as XLSX from "xlsx";
 import { createWorker } from "tesseract.js";
 import ExcelJS from "exceljs";
 import QRCode from "qrcode";
-import * as pako from "pako";
 
 // App.tsx import部分
 import {
@@ -17,12 +16,21 @@ import {
   isProductionInputItem,
 } from "./utils/production";
 
-// スキャン範囲計算
+// カメラスキャンエリア切り出し
 import {
   createCroppedCameraCanvas,
   drawCameraFrame,
   getScanAreaWH,
 } from "./utils/camera";
+
+//Config QR 転送関連
+import {
+  base64ToBytes,
+  bytesToBase64,
+  calculateChecksum,
+  compressText,
+  decompressText,
+} from "./utils/configTransfer";
 
 const DB_NAME = "serial-db";
 
@@ -1717,28 +1725,6 @@ export default function App() {
     setTestSheetOpen(false);
   }; 
 
-  const calculateChecksum = async (
-    value: string
-  ) => {
-    const data =
-      new TextEncoder().encode(value);
-
-    const hashBuffer =
-      await crypto.subtle.digest(
-        "SHA-256",
-        data
-      );
-
-    return Array.from(
-      new Uint8Array(hashBuffer)
-    )
-      .map(byte =>
-        byte
-          .toString(16)
-          .padStart(2, "0")
-      )
-      .join("");
-  };
 
   // Config受信中のデータ・進捗Stateを初期化
   const resetReceiveState = () => {
@@ -1774,71 +1760,6 @@ export default function App() {
         setConfigMode("none");
         setReceiveStatus("Stopped");
       };
-
-    const compressText = async (
-      text: string
-    ): Promise<Uint8Array> => {
-      const bytes =
-        new TextEncoder().encode(text);
-
-      return pako.gzip(bytes);
-    };
-
-    const decompressText = async (
-      bytes: Uint8Array
-    ): Promise<string> => {
-      const decompressed =
-        pako.ungzip(bytes);
-
-      return new TextDecoder().decode(
-        decompressed
-      );
-    };
-
-    const bytesToBase64 = (
-      bytes: Uint8Array
-    ): string => {
-      let binary = "";
-
-      const blockSize = 8192;
-
-      for (
-        let offset = 0;
-        offset < bytes.length;
-        offset += blockSize
-      ) {
-        const block =
-          bytes.subarray(
-            offset,
-            offset + blockSize
-          );
-
-        binary +=
-          String.fromCharCode(...block);
-      }
-
-      return btoa(binary);
-    };
-
-    const base64ToBytes = (
-      base64: string
-    ): Uint8Array => {
-      const binary = atob(base64);
-
-      const bytes =
-        new Uint8Array(binary.length);
-
-      for (
-        let i = 0;
-        i < binary.length;
-        i++
-      ) {
-        bytes[i] =
-          binary.charCodeAt(i);
-      }
-
-      return bytes;
-    };
 
 
     const processReceiveFrame =
