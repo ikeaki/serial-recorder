@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
 
 
 // Production入力対象判定
@@ -9,7 +8,6 @@ import {
 
 // カメラスキャンエリア切り出し
 import {
-  createCroppedCameraCanvas,
   drawCameraFrame,
   getScanAreaWH,
 } from "./utils/camera";
@@ -76,7 +74,7 @@ export default function App() {
   const [testSheetOpen, setTestSheetOpen] =
     useState(false);
 
-  // Config送信Stateと処理をHookから取得
+  // Config送受信Stateと操作をHookから取得
   const {
     configMode,
     sendFrames,
@@ -84,28 +82,23 @@ export default function App() {
     qrImage,
     transferId,
 
+    receivedCount,
+    receiveTotal,
+    receiveStatus,
+
     startSendConfig,
 
     stopSendConfig:
       stopSendConfigFromHook,
 
-    // Config受信表示
-    receivedCount,
-    receiveTotal,
-    receiveStatus,
-
-    // 受信処理移動まで一時的に取得
-    receiveRunningRef,
-    receiveReaderRef,
-
-    setReceiveStatus,
-
-    resetReceiveState,
-
     processReceiveFrame:
       processReceiveFrameFromHook,
 
-    setConfigMode,
+    startReceiveConfig:
+      startReceiveConfigFromHook,
+
+    stopReceiveConfig:
+      stopReceiveConfigFromHook,
   } = useConfigTransfer();
 
   const [results, setResults] = useState<Record<string, string>>({});
@@ -1165,22 +1158,15 @@ export default function App() {
     (): void => {
       stopSendConfigFromHook();
 
+      // 送信用シートを閉じる
       setTestSheetOpen(false);
     };
 
-    // Config受信を停止
-    const stopReceiveConfig =
-      () => {
-        resetReceiveState();
-
-        // 停止時だけReaderを解放
-        receiveReaderRef.current =
-          null;
-
-        // 停止時固有の画面状態
-        setConfigMode("none");
-        setReceiveStatus("Stopped");
-      };
+  // Config QR受信を停止
+  const stopReceiveConfig =
+    (): void => {
+      stopReceiveConfigFromHook();
+    };
 
   // Hookで復元したConfigをAppへ反映
   const processReceiveFrame =
@@ -1288,142 +1274,30 @@ export default function App() {
     };
 
 
-  const startReceiveConfig = async () => {
-    if (
-      !videoRef.current ||
-      !previewCanvasRef.current
-    ) {
-      setReceiveStatus(
-        "Camera Not Ready"
-      );
+  // Config QR受信を開始
+  const startReceiveConfig =
+    async (): Promise<void> => {
+      // Config受信時はスキャン範囲を60%に固定
+      setScanWidth(60);
+      setScanHeight(60);
 
-      return;
-    }
+      await startReceiveConfigFromHook({
+        video:
+          videoRef.current,
 
-    setScanWidth(60);
-    setScanHeight(60);
+        // State更新前でも確実に60%を使う
+        scanWidth: 60,
+        scanHeight: 60,
 
-    // 前回の受信データと進捗を初期化
-    resetReceiveState();
+        isMobile,
+        cropTopRate,
+        cropBottomRate,
 
-    // 受信開始時固有の画面状態
-    setReceiveStatus("Waiting...");    
-    setConfigMode("receive");
-
-    // 初期化後に受信を開始
-    receiveRunningRef.current = true;
-    
-    const reader =
-      new BrowserMultiFormatReader();
-
-    receiveReaderRef.current =
-      reader;
-
-    const scanLoop = async () => {
-      if (
-        !receiveRunningRef.current
-      ) {
-        return;
-      }
-
-      const video =
-        videoRef.current;
-
-      if (
-        !video ||
-        video.readyState < 2 ||
-        video.videoWidth === 0 ||
-        video.videoHeight === 0
-      ) {
-        window.setTimeout(
-          scanLoop,
-          200
-        );
-
-        return;
-      }
-
-      try {
-
-      // Config受信QR用Canvasを2倍で切り出す
-      const captured =
-        createCroppedCameraCanvas(
-          video,
-          2,
-          scanWidth,
-          scanHeight,
-          isMobile,
-          cropTopRate,
-          cropBottomRate
-        );
-
-        if (!captured) {
-          window.setTimeout(
-            scanLoop,
-            200
-          );
-          return;
-        }
-
-        const { cropCanvas } =
-          captured;
-
-        const image =
-          cropCanvas.toDataURL(
-            "image/png"
-          );
-
-        const img =
-          document.createElement("img");
-
-        img.src = image;
-
-        await new Promise<void>(
-          (resolve, reject) => {
-            img.onload =
-              () => resolve();
-
-            img.onerror =
-              () => reject(
-                new Error(
-                  "Image Load Failed"
-                )
-              );
-          }
-        );
-
-        const scanResult =
-          await reader
-            .decodeFromImageElement(
-              img
-            );
-
-        const text =
-          scanResult
-            .getText()
-            .trim();
-
-        await processReceiveFrame(
-          text
-        );
-      } catch {
-        // QRが読めないFrameは無視
-      }
-
-      if (
-        receiveRunningRef.current
-      ) {
-        window.setTimeout(
-          scanLoop,
-          200
-        );
-      }
+        // 読み取ったFrameを検証・復元する
+        onFrame:
+          processReceiveFrame,
+      });
     };
-
-    scanLoop();
-  };
-
-
 
   const changeZoom = async (
     delta: number

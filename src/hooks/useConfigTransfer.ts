@@ -20,6 +20,11 @@ import {
   decompressText,
 } from "../utils/configTransfer";
 
+// Config受信時のカメラ映像切り出し
+import {
+  createCroppedCameraCanvas,
+} from "../utils/camera";
+
 import type {
   ScanItem,
 } from "../types";
@@ -30,6 +35,36 @@ type ReceivedConfigItem = {
   r?: string;
   v?: string;
 };
+
+// Config QR受信開始時に
+// App側から渡すカメラ設定
+type StartReceiveOptions = {
+  video:
+    HTMLVideoElement | null;
+
+  scanWidth: number;
+  scanHeight: number;
+
+  isMobile: boolean;
+  cropTopRate: number;
+  cropBottomRate: number;
+
+  // 読み取ったQR文字列を
+  // App側の復元処理へ渡す
+  onFrame: (
+    text: string
+  ) => Promise<void>;
+};
+
+// Config QR受信開始の結果
+export type StartReceiveResult =
+  | {
+      status: "started";
+    }
+  | {
+      status:
+        "camera-not-ready";
+    };
 
 export type ConfigMode =
   | "none"
@@ -75,8 +110,7 @@ type ProductionResults =
 const FRAME_SIZE = 300;
 const FRAME_INTERVAL_MS = 200;
 
-// Config QR送受信を管理
-// 第1段階では送信側のみ実装
+// Config QR送受信のStateと処理を管理
 export const useConfigTransfer = () => {
   const [
     configMode,
@@ -396,6 +430,195 @@ export const useConfigTransfer = () => {
       setReceiveTotal(0);
     };
 
+  // Config QR受信を停止
+  const stopReceiveConfig =
+    (): void => {
+      // 受信Frame・進捗・識別情報を初期化
+      resetReceiveState();
+
+      // 現在のReader参照を解放
+      receiveReaderRef.current =
+        null;
+
+      // 送受信を行っていない状態へ戻す
+      setConfigMode("none");
+
+      // 画面表示用の受信状態
+      setReceiveStatus(
+        "Stopped"
+    );
+  };
+
+  // Config QR受信を開始
+  const startReceiveConfig =
+    async ({
+      video,
+      scanWidth,
+      scanHeight,
+      isMobile,
+      cropTopRate,
+      cropBottomRate,
+      onFrame,
+    }: StartReceiveOptions): Promise<
+      StartReceiveResult
+    > => {
+      // カメラ未準備時は受信を開始しない
+      if (!video) {
+        setReceiveStatus(
+          "Camera Not Ready"
+        );
+
+        return {
+          status:
+            "camera-not-ready",
+        };
+      }
+
+      // 前回の受信Frame・進捗を初期化
+      resetReceiveState();
+
+      setReceiveStatus(
+        "Waiting..."
+      );
+
+      // Config受信画面へ切り替える
+      setConfigMode(
+        "receive"
+      );
+
+      // 受信ループを有効化
+      receiveRunningRef.current =
+        true;
+
+      const reader =
+        new BrowserMultiFormatReader();
+
+      receiveReaderRef.current =
+        reader;
+
+      // Config QRを一定間隔で読み取る
+      const scanLoop =
+        async (): Promise<void> => {
+          // STOP後は次の読取りを行わない
+          if (
+            !receiveRunningRef.current
+          ) {
+            return;
+          }
+
+          // カメラ映像の準備待ち
+          if (
+            video.readyState < 2 ||
+            video.videoWidth === 0 ||
+            video.videoHeight === 0
+          ) {
+            window.setTimeout(
+              scanLoop,
+              200
+            );
+
+            return;
+          }
+
+          try {
+            // Config QR用にスキャン範囲を
+            // 2倍サイズで切り出す
+            const captured =
+              createCroppedCameraCanvas(
+                video,
+                2,
+                scanWidth,
+                scanHeight,
+                isMobile,
+                cropTopRate,
+                cropBottomRate
+              );
+
+            if (!captured) {
+              window.setTimeout(
+                scanLoop,
+                200
+              );
+
+              return;
+            }
+
+            const {
+              cropCanvas,
+            } = captured;
+
+            const image =
+              cropCanvas.toDataURL(
+                "image/png"
+              );
+
+            const img =
+              document.createElement(
+                "img"
+              );
+
+            img.src = image;
+
+            // 画像読込み完了後にQR解析を実行
+            await new Promise<void>(
+              (
+                resolve,
+                reject
+              ) => {
+                img.onload = () => {
+                  resolve();
+                };
+
+                img.onerror = () => {
+                  reject(
+                    new Error(
+                      "Image Load Failed"
+                    )
+                  );
+                };
+              }
+            );
+
+            const scanResult =
+              await reader
+                .decodeFromImageElement(
+                  img
+                );
+
+            const text =
+              scanResult
+                .getText()
+                .trim();
+
+            // Frame検証・結合・復元処理は
+            // App側のコールバックへ渡す
+            await onFrame(
+              text
+            );
+          } catch {
+            // 読み取れない画像や
+            // Config以外のQRは無視して継続
+          }
+
+          // 受信中の場合だけ次回読取りを予約
+          if (
+            receiveRunningRef.current
+          ) {
+            window.setTimeout(
+              scanLoop,
+              200
+            );
+          }
+        };
+
+      // 非同期受信ループを開始
+      void scanLoop();
+
+      return {
+        status: "started",
+      };
+    };
+
   // Config QR Frameを受信・検証・復元
   const processReceiveFrame =
     async (
@@ -689,41 +912,29 @@ export const useConfigTransfer = () => {
     };
     
   return {
-    // 送信・受信共通
+    // 送信・受信共通の画面状態
     configMode,
     transferId,
 
-    // 送信側
+    // Config送信画面で使用
     sendFrames,
     currentFrame,
     qrImage,
 
-
-    // 受信側の画面表示
+    // Config受信画面で使用
     receivedCount,
     receiveTotal,
     receiveStatus,
 
+    // Config送信操作
     startSendConfig,
     stopSendConfig,
 
+    // Config受信操作
+    startReceiveConfig,
+    stopReceiveConfig,
+
+    // 受信Frameの検証・結合・復元
     processReceiveFrame,
-    // 受信処理をHookへ完全移動するまで一時公開
-    receiveFrames,
-    receiveRunningRef,
-    receiveReaderRef,
-    receiveTransferIdRef,
-    receiveChecksumRef,
-    receiveExpectedTotalRef,
-
-    setReceivedCount,
-    setReceiveTotal,
-    setReceiveStatus,
-
-    resetReceiveState,
-
-    // 受信処理をHookへ完全移動するまで一時公開
-    setConfigMode,
-    setTransferId,
   };
 };
