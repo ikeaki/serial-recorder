@@ -17,6 +17,10 @@ import {
   isProductionInputItem,
 } from "./utils/production";
 
+// スキャン範囲計算
+import {
+  getScanAreaWH,
+} from "./utils/camera";
 
 const DB_NAME = "serial-db";
 
@@ -960,6 +964,7 @@ export default function App() {
               video
             );
 
+          // 現在のスキャン幅・高さで表示範囲を計算
           const {
             cropX,
             cropY,
@@ -967,7 +972,9 @@ export default function App() {
             cropH,
           } = getScanAreaWH(
             canvas.width,
-            drawHeight
+            drawHeight,
+            scanWidth,
+            scanHeight
           );
 
           // 上半分を暗くする
@@ -2438,32 +2445,6 @@ export default function App() {
     return canvas.height;
   };
 
-  const getScanAreaWH = (
-    width: number,
-    height: number
-  ) => {
-
-    const cropW =
-      width *
-      (scanWidth / 100);
-
-    const cropH =
-      height *
-      (scanHeight / 100);
-
-    const cropX =
-      (width - cropW) / 2;
-
-    const cropY =
-      (height - cropH) / 2;
-
-    return {
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-    };
-  };
 
   // カメラ映像からスキャン範囲を切り出す共通処理
   const createCroppedCameraCanvas = (
@@ -2492,6 +2473,7 @@ export default function App() {
         video
       );
 
+    // 現在のスキャン幅・高さで切り出し範囲を計算
     const {
       cropX,
       cropY,
@@ -2499,7 +2481,9 @@ export default function App() {
       cropH,
     } = getScanAreaWH(
       sourceCanvas.width,
-      drawHeight
+      drawHeight,
+      scanWidth,
+      scanHeight
     );
 
     const cropCanvas =
@@ -2650,12 +2634,18 @@ export default function App() {
           const w = rect.width;
           const h = rect.height;
 
-          const {
-            cropX,
-            cropY,
-            cropW,
-            cropH,
-          } = getScanAreaWH(w, h);
+        // クリック位置判定用のスキャン範囲
+        const {
+          cropX,
+          cropY,
+          cropW,
+          cropH,
+        } = getScanAreaWH(
+          w,
+          h,
+          scanWidth,
+          scanHeight
+        );
 
         // 左上 → Zoom +
         if (
