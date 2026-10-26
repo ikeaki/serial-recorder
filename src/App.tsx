@@ -72,7 +72,7 @@ export default function App() {
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const [result, setResult] = useState("Not Scanned");
 
-  const [ocrLoading, setOcrLoading] = useState(false);
+
   const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth, setScanWidth] = useState(50);
   const [tab, setTab] = useState<"eval" | "prod">("prod");
@@ -143,11 +143,13 @@ export default function App() {
   const isMobile = window.innerWidth <= 768;
 
   const {
-    workerRef,
     ocrReady,
     scanning,
     scanQr:
       scanQrFromCamera,
+    ocrLoading,
+    runOCR:
+      runOCRFromCamera,
   } = useScanner({
     videoRef,
     scanWidth,
@@ -900,306 +902,296 @@ export default function App() {
     setResult(text);
   };
   
+  // OCR結果を画面とProductionへ反映
   const runOCR = async () => {
+    const ocrResult =
+      await runOCRFromCamera();
 
-    if (!videoRef.current) return;
-
-    // OCR Workerをローカル変数として保持
-    const worker =
-      workerRef.current;
-
-    if (!worker) {
+    if (
+      ocrResult.status ===
+      "camera-not-ready"
+    ) {
       setResult(
-        "OCR Not Ready"
+        "Camera Not Ready"
       );
+
+      showOverlay(
+        "✕ CAMERA",
+        "#ff0000"
+      );
+
+      playError();
+      vibrateError();
 
       return;
     }
 
-    setOcrLoading(true);
-
-    try {
-
-    // OCR読取り用Canvasを4倍で切り出す
-    const captured =
-      createCroppedCameraCanvas(
-        videoRef.current,
-        4,
-        scanWidth,
-        scanHeight,
-        isMobile,
-        cropTopRate,
-        cropBottomRate
+    if (
+      ocrResult.status ===
+      "ocr-not-ready"
+    ) {
+      setResult(
+        "OCR Not Ready"
       );
 
-      if (!captured) {
-        setResult(
-          "Canvas Create Failed"
-        );
-        return;
-      }
+      showOverlay(
+        "✕ OCR",
+        "#ff0000"
+      );
 
-      const {
-        sourceCanvas: canvas,
-        cropCanvas,
+      playError();
+      vibrateError();
+
+      return;
+    }
+
+    if (
+      ocrResult.status ===
+      "canvas-failed"
+    ) {
+      setResult(
+        "Canvas Create Failed"
+      );
+
+      showOverlay(
+        "✕ OCR",
+        "#ff0000"
+      );
+
+      playError();
+      vibrateError();
+
+      return;
+    }
+
+    if (
+      ocrResult.status ===
+      "low-confidence"
+    ) {
+      const confidence =
+        ocrResult.confidence ??
+        0;
+
+      setResult(
+        `⚠ OCR Failed ` +
+        `(${confidence.toFixed(0)}%)`
+      );
+
+      showOverlay(
+        "✕ OCR",
+        "#ff0000"
+      );
+
+      playError();
+      vibrateError();
+
+      return;
+    }
+
+    if (
+      ocrResult.status ===
+      "failed"
+    ) {
+      setResult(
+        "⚠ OCR Failed"
+      );
+
+      showOverlay(
+        "✕ OCR",
+        "#ff0000"
+      );
+
+      playError();
+      vibrateError();
+
+      return;
+    }
+
+    // success以外ではtextを参照しない
+    if (
+      ocrResult.status !==
+      "success"
+    ) {
+      return;
+    }
+
+    const {
+      text,
+      confidence,
+      sourceCanvas,
+      cropCanvas,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+    } = ocrResult;
+
+    // TEST MODE用の切り出し範囲表示
+    const sourceCtx =
+      sourceCanvas.getContext(
+        "2d"
+      );
+
+    if (sourceCtx) {
+      sourceCtx.strokeStyle =
+        "red";
+
+      sourceCtx.lineWidth = 5;
+
+      sourceCtx.strokeRect(
         cropX,
         cropY,
         cropW,
-        cropH,
-      } = captured;
+        cropH
+      );
+    }
 
-      console.log({
-        cropW,
-        cropH,
-        canvasW: cropCanvas.width,
-        canvasH: cropCanvas.height,
-      });
+    sourceCanvas.style.width =
+      "100%";
 
-      const ctx =
-        canvas.getContext("2d");
+    sourceCanvas.style.maxWidth =
+      "450px";
 
-      if (ctx) {
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 5;
-        
-        ctx.strokeRect(
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-        );
-      }
-      
-      canvas.style.width = "100%";
-      canvas.style.maxWidth = "450px";
-      canvas.style.border = "2px solid blue";
+    sourceCanvas.style.border =
+      "2px solid blue";
 
-      document.getElementById("debugFull")?.remove();
-      canvas.id = "debugFull";
+    document
+      .getElementById(
+        "debugFull"
+      )
+      ?.remove();
 
-      if (tab === "eval") {
-        document.body.appendChild(canvas);
-      }
+    sourceCanvas.id =
+      "debugFull";
 
-      const thresholds = [
-        120,
-        140,
-        160,
-        180,
-        200,
-      ];
+    cropCanvas.style.height =
+      "auto";
 
-      let bestText = "";
-      let bestConfidence = 0;
+    cropCanvas.style.objectFit =
+      "contain";
 
+    cropCanvas.style.width =
+      "100%";
 
-      for (const threshold of thresholds) {
+    cropCanvas.style.maxWidth =
+      "450px";
 
-        const workCanvas =
-          document.createElement("canvas");
+    cropCanvas.style.border =
+      "2px solid red";
 
-        workCanvas.width =
-          cropCanvas.width;
+    document
+      .getElementById(
+        "debugCanvas"
+      )
+      ?.remove();
 
-        workCanvas.height =
-          cropCanvas.height;
+    cropCanvas.id =
+      "debugCanvas";
 
-        const workCtx =
-          workCanvas.getContext("2d");
+    if (tab === "eval") {
+      document.body.appendChild(
+        sourceCanvas
+      );
 
-        if (!workCtx) continue;
+      document.body.appendChild(
+        cropCanvas
+      );
+    }
 
-        workCtx.drawImage(
-          cropCanvas,
-          0,
-          0
-        );
+    const regex =
+      items[currentIndex]
+        ?.regex;
 
-        const imageData =
-          workCtx.getImageData(
-            0,
-            0,
-            workCanvas.width,
-            workCanvas.height
-          );
-
-        const data =
-          imageData.data;
-
-        for (
-          let i = 0;
-          i < data.length;
-          i += 4
-        ) {
-
-          const gray =
-            data[i] * 0.299 +
-            data[i + 1] * 0.587 +
-            data[i + 2] * 0.114;
-
-          const value =
-            gray > threshold
-              ? 255
-              : 0;
-
-          data[i] = value;
-          data[i + 1] = value;
-          data[i + 2] = value;
-        }
-
-        workCtx.putImageData(
-          imageData,
-          0,
-          0
-        );
-
-        const image =
-          workCanvas.toDataURL(
-            "image/png"
-          );
-
-        const result =
-          await worker.recognize(
-            image,
-            {
-              tessedit_char_whitelist:
-              "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ=",
-            } as any
-          );
-
-        const text =
-          result.data.text
-            .trim()
-            .replace(/\s/g, "");
-
-        const confidence =
-          result.data.confidence;
-
-        console.log({
-          threshold,
-          text,
-          confidence,
-        });
-         
+    if (regex?.trim()) {
+      try {
         if (
-        text.length > 0 &&
-        confidence >= 50 &&
-        confidence > bestConfidence
+          !new RegExp(
+            regex
+          ).test(text)
         ) {
-        bestConfidence = confidence;
-        bestText = text;
-        }
-
-
-
-        console.log(
-          "OCR threshold:",
-          threshold
-          );
-
-      }
-      
-      if (bestConfidence < 50) {
-        showOverlay("✕ OCR", "#ff0000");
-        playError();
-        vibrateError();
-        setResult(
-        `⚠ OCR Failed (${bestConfidence.toFixed(0)}%)`
-        );
-        return;
-      }
-
-      const rawText = bestText;
-      
-      const text = rawText;
-
-        
-      console.log({
-      rawText,
-      text,
-      bestConfidence,
-      });
-    
-
-      cropCanvas.id = "debugCanvas";
-
-      document
-        .getElementById("debugCanvas")
-        ?.remove();
-
-      cropCanvas.style.height = "auto";
-      cropCanvas.style.objectFit = "contain";
-      cropCanvas.style.width = "100%";
-      cropCanvas.style.maxWidth = "450px";
-      cropCanvas.style.border = "2px solid red";
-
-      if (tab === "eval") {
-        document.body.appendChild(cropCanvas);
-      }
-
-      const regex =
-        items[currentIndex]?.regex;
-
-      if (regex?.trim()) {
-
-        // Regex指定あり
-        if (!new RegExp(regex).test(text)) {
-
-          playError();
-          vibrateError();
-
-          showOverlay("✕ FORMAT", "#ff0000");
-
           setResult(
             `Format Error : ${text}`
           );
 
-          return;
-        }
-
-      } else {
-
-        // Regex未指定
-        if (
-          text.length === 0 ||
-          !/^[0-9A-Z=]+$/.test(text)
-        ) {
-
-          showOverlay("✕ OCR", "#ff0000");
+          showOverlay(
+            "✕ FORMAT",
+            "#ff0000"
+          );
 
           playError();
           vibrateError();
 
-          setResult("⚠ OCR Failed");
-
           return;
         }
+      } catch (error) {
+        console.error(
+          "Invalid Regex:",
+          regex,
+          error
+        );
 
-      }
+        setResult(
+          "Invalid Regex"
+        );
 
-      if (tab === "eval") {
-        setResult(text);
-        showOverlay("✓ OK", "#00ff00");
-        playSuccess();
-        vibrateSuccess();
+        showOverlay(
+          "✕ FORMAT",
+          "#ff0000"
+        );
+
+        playError();
+        vibrateError();
+
         return;
       }
-
-      const applied =
-        await applyProductionScan(text);
-
-      if (!applied) {
-        return;
-      }
-
+    } else if (
+      text.length === 0 ||
+      !/^[0-9A-Z=]+$/.test(
+        text
+      )
+    ) {
       setResult(
-        `OCR: ${text} (${bestConfidence.toFixed(0)}%)`
+        "⚠ OCR Failed"
       );
-    } finally {
 
-      setOcrLoading(false);
+      showOverlay(
+        "✕ OCR",
+        "#ff0000"
+      );
 
+      playError();
+      vibrateError();
+
+      return;
     }
+
+    if (tab === "eval") {
+      setResult(text);
+
+      showOverlay(
+        "✓ OK",
+        "#00ff00"
+      );
+
+      playSuccess();
+      vibrateSuccess();
+
+      return;
+    }
+
+    const applied =
+      await applyProductionScan(
+        text
+      );
+
+    if (!applied) {
+      return;
+    }
+
+    setResult(
+      `OCR: ${text} ` +
+      `(${confidence.toFixed(0)}%)`
+    );
   };
 
   const sendConfig = async () => {
