@@ -1,15 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
-import * as XLSX from "xlsx";
 import { createWorker } from "tesseract.js";
-import ExcelJS from "exceljs";
-import QRCode from "qrcode";
 
-// App.tsx import部分
-import {
-  createProductionFileName,
-  downloadBlob,
-} from "./utils/file";
+import QRCode from "qrcode";
 
 // Production入力対象判定
 import {
@@ -39,6 +32,20 @@ import {
   saveProductionRecord,
 } from "./services/productionDb";
 
+// ExportExcelCSV関連
+import {
+  exportProductionCsv
+    as exportProductionCsvFile,
+  exportProductionExcel
+    as exportProductionExcelFile,
+  exportProductionExcelWithQr
+    as exportProductionExcelWithQrFile,
+} from "./services/productionExport";
+
+// Excel Config解析
+import {
+  parseExcelConfig,
+} from "./services/configLoader";
 
 // ConfigおよびProductionの項目定義
 import type {
@@ -293,319 +300,68 @@ export default function App() {
 
   };
 
-
+  // QRなしExcel出力
   const exportProductionExcel =
-    async () => {
-
-
-    const exportData = [
-      ["Name", "Type", "Regex", "Value"],
-
-      ...items.map(item => [
-
-          item.name,
-          item.type ?? "",
-          item.regex ?? "",
-          // 現在画面のProduction Valueを出力
-          item.name === "Export Time"
-            ? new Date().toLocaleString()
-            : (results[item.name] ?? ""),
-          ]),
-    ];
-
-    const worksheet =
-      XLSX.utils.aoa_to_sheet(
-        exportData
+    () => {
+      exportProductionExcelFile(
+        items,
+        results
       );
-
-    const workbook =
-      XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      "Production"
-    );
-
-    // QRなしExcelのファイル名
-    const fileName =
-      createProductionFileName(
-        results["Model"],
-        "xlsx"
-      );
-
-    // 通常ExcelをBlobへ変換
-    const excelBuffer =
-      XLSX.write(
-        workbook,
-        {
-          bookType: "xlsx",
-          type: "array",
-        }
-      );
-
-    const blob =
-      new Blob(
-        [excelBuffer],
-        {
-          type:
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }
-      );
-
-    downloadBlob(
-      blob,
-      fileName
-    );
-
-    };
-  
-  const exportProductionExcelWithQr = async () => {
-
-    const workbook = new ExcelJS.Workbook();
-
-    const sheet =
-      workbook.addWorksheet("Production");
-
-    sheet.columns = [
-      {
-        header: "Name",
-        key: "name",
-        width: 25,
-      },
-      {
-        header: "Type",
-        key: "type",
-        width: 10,
-      },
-      {
-        header: "Regex",
-        key: "regex",
-        width: 35,
-      },
-      {
-        header: "Value",
-        key: "value",
-        width: 35,
-      },
-      {
-        header: "QR",
-        key: "qr",
-        width: 15,
-      },
-    ];
-
-    for (let i = 0; i < items.length; i++) {
-
-      const item = items[i];
-
-      const value =
-        item.name === "Export Time"
-          ? new Date().toLocaleString()
-          : (results[item.name] ?? "");
-
-      sheet.addRow([
-        item.name,
-        item.type ?? "",
-        item.regex ?? "",
-        value,
-        "",
-      ]);
-
-      const row = sheet.getRow(i + 2);
-      row.height = 65;
-
-      if (!String(value).trim()) {
-        continue;
-      }
-
-      try {
-
-        const qrBase64 =
-          await QRCode.toDataURL(
-            String(value),
-            {
-              margin: 1,
-              width: 300,
-            }
-          );
-
-        const imageId =
-          workbook.addImage({
-            base64: qrBase64,
-            extension: "png",
-          });
-
-        sheet.addImage(imageId, {
-          tl: {
-            col: 4,
-            row: i + 1,
-          },
-          ext: {
-            width: 60,
-            height: 60,
-          },
-        });
-
-      } catch (err) {
-
-        console.error(
-          "QR Create Error:",
-          value,
-          err
-        );
-
-      }
-    }
-
-    sheet.getRow(1).font = {
-      bold: true,
     };
 
-    const buffer =
-      await workbook.xlsx.writeBuffer();
-
-    const blob = new Blob(
-      [buffer],
-      {
-        type:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      }
-    );
-
-    // QR付きExcelのファイル名
-    const fileName =
-      createProductionFileName(
-        results["Model"],
-        "xlsx",
-        "QR"
-      );
-
-    // QR付きExcelをダウンロード
-    downloadBlob(
-      blob,
-      fileName
-    );
-
-    playSuccess();
-    vibrateSuccess();
-  };
-
-  const exportProductionCsv =
+  // QR付きExcel出力
+  const exportProductionExcelWithQr =
     async () => {
-
-      const csvRows = [
-        ["Name", "Type", "Regex", "Value"],
-
-        ...items.map(item => [
-            item.name,
-            item.type ?? "",
-            item.regex ?? "",
-            // 現在画面のProduction Valueを出力
-            item.name === "Export Time"
-              ? new Date().toLocaleString()
-              : (results[item.name] ?? ""),
-        ]),
-      ];
-
-      const csvText = csvRows
-        .map(row =>
-          row.map(v =>
-            `"${String(v).replace(/"/g, '""')}"`
-          ).join(",")
-        )
-        .join("\r\n");
-
-      // CSVのファイル名
-      const fileName =
-        createProductionFileName(
-          results["Model"],
-          "csv"
-        );
-
-      const blob = new Blob(
-        ["\uFEFF" + csvText],
-        {
-          type: "text/csv;charset=utf-8;",
-        }
-      );
-
-      // CSVをダウンロード
-      downloadBlob(
-        blob,
-        fileName
+      await exportProductionExcelWithQrFile(
+        items,
+        results
       );
 
       playSuccess();
       vibrateSuccess();
+    };
 
-  };
+  // CSV出力
+  const exportProductionCsv =
+    () => {
+      exportProductionCsvFile(
+        items,
+        results
+      );
 
+      playSuccess();
+      vibrateSuccess();
+    };
+
+  // 解析結果をReact Stateへ反映
   const loadExcelConfig = async (
     arrayBuffer: ArrayBuffer
-  ) => {
+  ): Promise<void> => {
+    const {
+      items: loadedItems,
+      results: loadedResults,
+    } = parseExcelConfig(
+      arrayBuffer
+    );
 
-    const workbook =
-      XLSX.read(
-        arrayBuffer,
-        { type: "array" }
-      );
+    setItems(
+      loadedItems
+    );
 
-    const sheet =
-      workbook.Sheets[
-        workbook.SheetNames[0]
-      ];
+    setResults(
+      loadedResults
+    );
 
-    const rows =
-      XLSX.utils.sheet_to_json(
-        sheet,
-        { header: 1 }
-      ) as any[][];
-
-
-    const headerRowIndex =
-      rows.findIndex(
-        row =>
-          row[0] === "Name" &&
-          row[1] === "Type"
-      );
-
-    if (headerRowIndex === -1) {
-      throw new Error(
-        "Invalid Config Format"
-      );
-    }
-
-    const items =
-      rows
-        .slice(headerRowIndex + 1)
-        .filter(row => row[0])
-        .map(row => ({
-          name: String(row[0]),
-          type: String(row[1] ?? ""),
-          regex: String(row[2] ?? ""),
-          value: String(row[3] ?? ""),
-    }));
-
-    const defaultResults =
-      Object.fromEntries(
-        items.map(item => [
-          item.name,
-          item.value ?? "",
-        ])
-      );
-
-    setItems(items);
-    setResults(defaultResults);
-
-    // 最初のProduction入力項目を取得
     const startIndex =
-      items.findIndex(
+      loadedItems.findIndex(
         isProductionInputItem
       );
 
-    setCurrentIndex(startIndex);
-
+    setCurrentIndex(
+      startIndex >= 0
+        ? startIndex
+        : 0
+    );
   };
 
   const loadConfig = (
