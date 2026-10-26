@@ -447,15 +447,6 @@ export default function App() {
   const exportProductionExcel =
     async () => {
 
-    const data =
-      await loadProductionHistory();
-
-    const latest =
-      data.length > 0
-        ? data[data.length - 1]
-        : {};
-
-    const { id, ...record } = latest;
 
     const exportData = [
       ["Name", "Type", "Regex", "Value"],
@@ -465,10 +456,11 @@ export default function App() {
           item.name,
           item.type ?? "",
           item.regex ?? "",
+          // 現在画面のProduction Valueを出力
           item.name === "Export Time"
             ? new Date().toLocaleString()
-            : (record[item.name] ?? ""),
-      ]),
+            : (results[item.name] ?? ""),
+          ]),
     ];
 
     const worksheet =
@@ -650,16 +642,6 @@ export default function App() {
   const exportProductionCsv =
     async () => {
 
-      const data =
-        await loadProductionHistory();
-
-      const latest =
-        data.length > 0
-          ? data[data.length - 1]
-          : {};
-
-      const { id, ...record } = latest;
-
       const csvRows = [
         ["Name", "Type", "Regex", "Value"],
 
@@ -667,9 +649,10 @@ export default function App() {
             item.name,
             item.type ?? "",
             item.regex ?? "",
+            // 現在画面のProduction Valueを出力
             item.name === "Export Time"
               ? new Date().toLocaleString()
-              : (record[item.name] ?? ""),
+              : (results[item.name] ?? ""),
         ]),
       ];
 

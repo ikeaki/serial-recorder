@@ -1,27 +1,28 @@
-  // Blobデータを指定ファイル名でダウンロード
-export  const downloadBlob = (
-    blob: Blob,
-    fileName: string
-  ): void => {
-    const url =
-      URL.createObjectURL(blob);
+// src/utils/file.ts
 
-    const link =
-      document.createElement("a");
+// Blobデータを指定ファイル名でダウンロード
+export const downloadBlob = (
+  blob: Blob,
+  fileName: string
+): void => {
+  const url =
+    URL.createObjectURL(blob);
 
-    try {
-      link.href = url;
-      link.download = fileName;
+  const link =
+    document.createElement("a");
 
-      document.body.appendChild(
-        link
-      );
+  try {
+    link.href = url;
+    link.download = fileName;
 
-      link.click();
-    } finally {
-      link.remove();
+    document.body.appendChild(
+      link
+    );
 
-      URL.revokeObjectURL(url);
-    }
+    link.click();
+  } finally {
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  }
 };
-  
