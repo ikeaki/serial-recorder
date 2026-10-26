@@ -19,6 +19,7 @@ import {
 
 // スキャン範囲計算
 import {
+  createCroppedCameraCanvas,
   drawCameraFrame,
   getScanAreaWH,
 } from "./utils/camera";
@@ -1191,12 +1192,17 @@ export default function App() {
         timeoutMs
       ) {
 
-        // QR読取り用Canvasを2倍で切り出す
-        const captured =
-          createCroppedCameraCanvas(
-            video,
-            2
-          );
+      // QR読取り用Canvasを2倍で切り出す
+      const captured =
+        createCroppedCameraCanvas(
+          video,
+          2,
+          scanWidth,
+          scanHeight,
+          isMobile,
+          cropTopRate,
+          cropBottomRate
+        );
 
         if (!captured) {
           throw new Error(
@@ -1322,12 +1328,18 @@ export default function App() {
     setOcrLoading(true);
 
     try {
-      // OCR読取り用Canvasを4倍で切り出す
-      const captured =
-        createCroppedCameraCanvas(
-          videoRef.current,
-          4
-        );
+
+    // OCR読取り用Canvasを4倍で切り出す
+    const captured =
+      createCroppedCameraCanvas(
+        videoRef.current,
+        4,
+        scanWidth,
+        scanHeight,
+        isMobile,
+        cropTopRate,
+        cropBottomRate
+      );
 
       if (!captured) {
         setResult(
@@ -2183,12 +2195,18 @@ export default function App() {
       }
 
       try {
-        // Config受信QR用Canvasを2倍で切り出す
-        const captured =
-          createCroppedCameraCanvas(
-            video,
-            2
-          );
+
+      // Config受信QR用Canvasを2倍で切り出す
+      const captured =
+        createCroppedCameraCanvas(
+          video,
+          2,
+          scanWidth,
+          scanHeight,
+          isMobile,
+          cropTopRate,
+          cropBottomRate
+        );
 
         if (!captured) {
           window.setTimeout(
@@ -2385,86 +2403,6 @@ export default function App() {
     }
   };
 
-  // カメラ映像からスキャン範囲を切り出す共通処理
-  const createCroppedCameraCanvas = (
-    video: HTMLVideoElement,
-    scale: number
-  ) => {
-    const sourceCanvas =
-      document.createElement("canvas");
-
-    sourceCanvas.width =
-      video.videoWidth;
-    sourceCanvas.height =
-      video.videoHeight;
-
-    const sourceCtx =
-      sourceCanvas.getContext("2d");
-
-    if (!sourceCtx) {
-      return null;
-    }
-
-    // 切り出し元となるカメラ映像を描画
-    const drawHeight =
-      drawCameraFrame(
-        sourceCtx,
-        sourceCanvas,
-        video,
-        isMobile,
-        cropTopRate,
-        cropBottomRate
-      );
-
-    // 現在のスキャン幅・高さで切り出し範囲を計算
-    const {
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-    } = getScanAreaWH(
-      sourceCanvas.width,
-      drawHeight,
-      scanWidth,
-      scanHeight
-    );
-
-    const cropCanvas =
-      document.createElement("canvas");
-
-    cropCanvas.width =
-      Math.round(cropW * scale);
-    cropCanvas.height =
-      Math.round(cropH * scale);
-
-    const cropCtx =
-      cropCanvas.getContext("2d");
-
-    if (!cropCtx) {
-      return null;
-    }
-
-    cropCtx.drawImage(
-      sourceCanvas,
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-      0,
-      0,
-      cropCanvas.width,
-      cropCanvas.height
-    );
-
-    return {
-      sourceCanvas,
-      cropCanvas,
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-    };
-  };
 
   return (
     <div

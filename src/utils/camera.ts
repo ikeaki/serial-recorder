@@ -110,3 +110,103 @@ export const drawCameraFrame = (
 
   return canvas.height;
 };
+
+
+export type CroppedCameraCanvas = {
+  sourceCanvas: HTMLCanvasElement;
+  cropCanvas: HTMLCanvasElement;
+  cropX: number;
+  cropY: number;
+  cropW: number;
+  cropH: number;
+};
+
+// カメラ映像からスキャン範囲を切り出す
+export const createCroppedCameraCanvas = (
+  video: HTMLVideoElement,
+  scale: number,
+  scanWidthPercent: number,
+  scanHeightPercent: number,
+  isMobile: boolean,
+  cropTopRate: number,
+  cropBottomRate: number
+): CroppedCameraCanvas | null => {
+  const sourceCanvas =
+    document.createElement("canvas");
+
+  sourceCanvas.width =
+    video.videoWidth;
+
+  sourceCanvas.height =
+    video.videoHeight;
+
+  const sourceCtx =
+    sourceCanvas.getContext("2d");
+
+  if (!sourceCtx) {
+    return null;
+  }
+
+  const drawHeight =
+    drawCameraFrame(
+      sourceCtx,
+      sourceCanvas,
+      video,
+      isMobile,
+      cropTopRate,
+      cropBottomRate
+    );
+
+  const {
+    cropX,
+    cropY,
+    cropW,
+    cropH,
+  } = getScanAreaWH(
+    sourceCanvas.width,
+    drawHeight,
+    scanWidthPercent,
+    scanHeightPercent
+  );
+
+  const cropCanvas =
+    document.createElement("canvas");
+
+  cropCanvas.width =
+    Math.round(
+      cropW * scale
+    );
+
+  cropCanvas.height =
+    Math.round(
+      cropH * scale
+    );
+
+  const cropCtx =
+    cropCanvas.getContext("2d");
+
+  if (!cropCtx) {
+    return null;
+  }
+
+  cropCtx.drawImage(
+    sourceCanvas,
+    cropX,
+    cropY,
+    cropW,
+    cropH,
+    0,
+    0,
+    cropCanvas.width,
+    cropCanvas.height
+  );
+
+  return {
+    sourceCanvas,
+    cropCanvas,
+    cropX,
+    cropY,
+    cropW,
+    cropH,
+  };
+};
