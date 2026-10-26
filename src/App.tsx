@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
-import QRCode from "qrcode";
 
 // Production入力対象判定
 import {
@@ -18,11 +17,15 @@ import {
 //Config QR 転送関連
 import {
   base64ToBytes,
-  bytesToBase64,
   calculateChecksum,
-  compressText,
   decompressText,
 } from "./utils/configTransfer";
+
+// Config QR送受信管理
+import {
+  useConfigTransfer,
+} from "./hooks/useConfigTransfer";
+
 
 // productionDB関連
 import {
@@ -80,20 +83,23 @@ export default function App() {
   const [testSheetOpen, setTestSheetOpen] =
     useState(false);
 
-  const [configMode, setConfigMode] =
-    useState<"none" | "send" | "receive">(
-      "none"
-    );
-    
-  const [sendFrames, setSendFrames] =
-  useState<string[]>([]);
+  // Config送信Stateと処理をHookから取得
+  const {
+    configMode,
+    sendFrames,
+    currentFrame,
+    qrImage,
+    transferId,
 
-  const [currentFrame, setCurrentFrame] =
-    useState(0);
+    startSendConfig,
 
-  const [qrImage, setQrImage] =
-    useState("");
+    stopSendConfig:
+      stopSendConfigFromHook,
 
+    // 受信処理を移動するまで一時的に使用
+    setConfigMode,
+    setTransferId,
+  } = useConfigTransfer();
 
   const receiveFrames =
   useRef<Map<number, string>>(
@@ -125,9 +131,6 @@ export default function App() {
 
   const receiveExpectedTotalRef =
     useRef(0);
-
-  const [transferId, setTransferId] =
-    useState("");
 
   const [results, setResults] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -758,50 +761,6 @@ export default function App() {
 
 }, [scanHeight, scanWidth, zoom]);
 
-  useEffect(() => {
-
-    if (
-      configMode !== "send" ||
-      sendFrames.length === 0
-    ) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-
-      setCurrentFrame(prev =>
-        (prev + 1) %
-        sendFrames.length
-      );
-
-    }, 200);
-
-    return () =>
-      clearInterval(timer);
-
-  }, [
-    configMode,
-    sendFrames
-  ]);
-
-  useEffect(() => {
-
-    if (
-      configMode !== "send" ||
-      sendFrames.length === 0
-    ) {
-      return;
-    }
-
-    QRCode.toDataURL(
-      sendFrames[currentFrame]
-    ).then(setQrImage);
-
-  }, [
-    configMode,
-    currentFrame,
-    sendFrames
-  ]);  
   
   // QR読取り結果を画面へ反映
   const scanQr = async () => {
@@ -1194,111 +1153,44 @@ export default function App() {
     );
   };
 
-  const sendConfig = async () => {
-    try {
-      const configData =
-        items.map(item => ({
-          n: item.name,
-          t: item.type ?? "",
-          r: item.regex ?? "",
-          v:
-            results[item.name] ??
-            item.value ??
-            "",
-        }));
-
-      const json =
-        JSON.stringify(configData);
-
-      const compressedBytes =
-        await compressText(json);
-
-      const base64 =
-        bytesToBase64(
-          compressedBytes
+  // Config QR送信を開始
+  const sendConfig =
+    async (): Promise<void> => {
+      const sendResult =
+        await startSendConfig(
+          items,
+          results
         );
 
-      const checksum =
-        await calculateChecksum(
-          base64
-        );
-
-      const newTransferId =
-        crypto.randomUUID
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random()
-              .toString(16)
-              .slice(2)}`;
-
-      const frameSize = 300;
-
-      const frames: string[] = [];
-
-      const total =
-        Math.ceil(
-          base64.length /
-            frameSize
-        );
-
-      for (
-        let i = 0;
-        i < total;
-        i++
+      if (
+        sendResult.status ===
+        "failed"
       ) {
-        const chunk =
-          base64.slice(
-            i * frameSize,
-            (i + 1) *
-              frameSize
-          );
-
-        frames.push(
-          [
-            "CFGZ",
-            newTransferId,
-            String(i + 1)
-              .padStart(4, "0"),
-            String(total)
-              .padStart(4, "0"),
-            checksum,
-            chunk,
-          ].join("|")
+        setResult(
+          "Send Config Failed"
         );
+
+        playError();
+        vibrateError();
+
+        return;
       }
 
-      setTransferId(
-        newTransferId
-      );
-
-      setQrImage("");
-      setSendFrames(frames);
-      setCurrentFrame(0);
-      setConfigMode("send");
       setTestSheetOpen(true);
 
       setResult(
-        `Sending Config: ${frames.length} Frames`
+        `Sending Config: ` +
+        `${sendResult.frameCount} Frames`
       );
-    } catch {
-      setResult(
-        "Send Config Failed"
-      );
+    };
 
-      setConfigMode("none");
+  // Config QR送信を停止
+  const stopSendConfig =
+    (): void => {
+      stopSendConfigFromHook();
 
-      playError();
-      vibrateError();
-    }
-  };
-
-  const stopSendConfig = () => {
-    setConfigMode("none");
-    setSendFrames([]);
-    setCurrentFrame(0);
-    setQrImage("");
-    setTestSheetOpen(false);
-  }; 
-
+      setTestSheetOpen(false);
+    };
 
   // Config受信中のデータ・進捗Stateを初期化
   const resetReceiveState = () => {
