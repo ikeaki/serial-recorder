@@ -54,10 +54,11 @@ import {
   useScanner,
 } from "./hooks/useScanner";
 
-// Components -------
+// Components
 import { ModeTabs } from "./components/ModeTabs";
 import { CameraPreview } from "./components/CameraPreview";
 import { ScanButtons } from "./components/ScanButtons";
+import { ProductionCurrentItem } from "./components/ProductionCurrentItem";
 
 const BUILD_DATE = __BUILD_DATE__;
 
@@ -1797,220 +1798,82 @@ export default function App() {
         }}
       >
 
-      <div>
+      {/* Productionの前・現在・次項目 */}
+      <ProductionCurrentItem
+        items={items}
+        results={results}
+        currentIndex={currentIndex}
 
-          {/* Previous */}
-          <div
-            onClick={async () => {
+        onPrevious={async () => {
+          // 現在の入力内容を保存
+          await saveCurrentProduction();
 
-              await saveCurrentProduction();
+          // 1つ前の項目へ移動
+          setCurrentIndex((prev) =>
+            Math.max(0, prev - 1)
+          );
 
-              setCurrentIndex(prev =>
-                Math.max(0, prev - 1)
-              );
+          vibrateSuccess();
+        }}
 
-              vibrateSuccess();
-            }}
+        onValueChange={(value) => {
+          const itemName =
+            items[currentIndex]?.name;
 
-            style={{
-              display: "grid",
-              gridTemplateColumns: "120px 60px 1fr",
-              alignItems: "center",
-              textAlign: "left",
-              gap: "10px",
-              color: "#888",
-              fontSize: "14px",
-              height: "32px",
-              marginBottom: "15px",
-              cursor: "pointer",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-              touchAction: "manipulation",
-            }}
-          >
-          <div>
-            {items[currentIndex - 1]?.name ?? "-"}
-          </div>
+          if (!itemName) return;
 
-          <div>
-            {items[currentIndex - 1]?.type ?? ""}
-          </div>
+          // 現在項目の入力結果を更新
+          setResults({
+            ...results,
+            [itemName]: value,
+          });
+        }}
 
-          <div>
-            {
-              results[
-                items[currentIndex - 1]?.name
-              ] ?? ""
-            }
-          </div>
-        </div>
+        onValueEnter={async (value) => {
+          const itemName =
+            items[currentIndex]?.name;
 
-        {/* Current */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "120px 60px 1fr",
-            alignItems: "center",
-            height: "60px",
-            gap: "10px",
-            overflow: "hidden",
-          }}
-        >
+          if (!itemName) return;
 
-        <div
-          style={{
-            height: "60px",
+          const newResults = {
+            ...results,
+            [itemName]: value,
+          };
 
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
+          // 入力結果を更新して保存
+          setResults(newResults);
 
-            fontSize: "24px",
-            fontWeight: "bold",
-            lineHeight: "1.1",
+          await saveCurrentProduction(
+            newResults
+          );
 
-            overflow: "hidden",
-            wordBreak: "break-word",
+          // 次の項目へ移動
+          setCurrentIndex((prev) =>
+            Math.min(
+              items.length - 1,
+              prev + 1
+            )
+          );
 
-            textAlign: "left",            
+          playSuccess();
+          vibrateSuccess();
+        }}
 
-          }}
-        >
-          {items[currentIndex]?.name ?? ""}
-        </div>
+        onNext={async () => {
+          // 現在の入力内容を保存
+          await saveCurrentProduction();
 
+          // 1つ次の項目へ移動
+          setCurrentIndex((prev) =>
+            Math.min(
+              items.length - 1,
+              prev + 1
+            )
+          );
 
-          <div
-            style={{
-              fontSize: "20px",
-              color: "#666",
-              textAlign: "left",
-            }}
-          >
-            {items[currentIndex]?.type ?? ""}
-          </div>
-
-          <input
-            value={
-              results[
-                items[currentIndex]?.name
-              ] ?? ""
-            }
-
-            onChange={async (e) => {
-
-              const itemName =
-                items[currentIndex]?.name;
-
-              if (!itemName) return;
-
-
-              const value = e.target.value;
-
-              const newResults = {
-                ...results,
-                [itemName]: value,
-              };
-
-              setResults(newResults);
-
-            }}   
-
-            onKeyDown={async (e) => {
-
-              if (e.key !== "Enter") return;
-
-              const itemName =
-                items[currentIndex]?.name;
-
-              if (!itemName) return;
-
-              const value =
-                (e.target as HTMLInputElement)
-                  .value
-                  .trim();
-
-              const newResults = {
-                ...results,
-                [itemName]: value,
-              };
-
-              setResults(newResults);
-
-              await saveCurrentProduction(
-                newResults
-              );
-
-              setCurrentIndex(prev =>
-                Math.min(
-                  items.length - 1,
-                  prev + 1
-                )
-              );
-
-              playSuccess();
-              vibrateSuccess();
-
-            }}
-
-            style={{
-              width: "100%",
-              height: "50px",
-              fontSize: "24px",
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        {/* Next */}
-        <div
-          onClick={async () => {
-
-            await saveCurrentProduction();
-
-            setCurrentIndex(prev =>
-              Math.min(items.length - 1, prev + 1)
-            );
-
-            vibrateSuccess();
-
-          }}
-          style={{
-            display: "grid",
-            gridTemplateColumns: "120px 60px 1fr",
-            alignItems: "center",
-            textAlign: "left",
-            gap: "10px",
-            color: "#888",
-            fontSize: "14px",
-            height: "32px",
-            marginBottom: "15px",
-
-            cursor: "pointer",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-            touchAction: "manipulation",
-          }}
-        >
-
-          <div>
-            {items[currentIndex + 1]?.name ?? "-"}
-          </div>
-
-          <div>
-            {items[currentIndex + 1]?.type ?? ""}
-          </div>
-
-          <div>
-            {
-              results[
-                items[currentIndex + 1]?.name
-              ] ?? ""
-            }
-          </div>
-        </div>
-
-      </div>
+          vibrateSuccess();
+        }}
+      />
     </div>
 
 
