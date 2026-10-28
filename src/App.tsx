@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-
 // Production入力対象判定
 import {
   isProductionInputItem,
@@ -56,11 +55,9 @@ import {
 } from "./hooks/useScanner";
 
 // Components -------
-// prodicution / test tab
 import { ModeTabs } from "./components/ModeTabs";
-
-// CameraPreview
 import { CameraPreview } from "./components/CameraPreview";
+import { ScanButtons } from "./components/ScanButtons";
 
 const BUILD_DATE = __BUILD_DATE__;
 
@@ -1418,54 +1415,15 @@ export default function App() {
       >
         Build: {BUILD_DATE} JST
       </div>
-
-        
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginTop: "10px",
-        }}
-      >
-        <button
-          style={{
-            flex: 1,
-            height: "48px",
-            fontSize: "16px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-          }}
-          disabled={
-            scanning ||
-            ocrLoading
-          }
-
-          onClick={scanQr}
-        >
-          {scanning ? "Scanning..." : "Scan QR/Barcode"}
-        </button>
-
-        <button
-          style={{
-            flex: 1,
-            height: "48px",
-            fontSize: "16px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-          }}
-          disabled={
-          scanning ||
-          ocrLoading ||
-          !ocrReady
-          }
-          onClick={runOCR}
-        >
-          {ocrLoading
-            ? "Scanning..."
-            : "Scan OCR"}
-        </button>
-      </div>
-
+ 
+    {/* QR・バーコード／OCR読取ボタン */}
+    <ScanButtons
+      scanning={scanning}
+      ocrLoading={ocrLoading}
+      ocrReady={ocrReady}
+      onScanQr={scanQr}
+      onRunOCR={runOCR}
+    />
 
     {tab === "eval" && (
     <>
