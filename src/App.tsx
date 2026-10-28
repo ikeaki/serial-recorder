@@ -60,6 +60,7 @@ import { CameraPreview } from "./components/CameraPreview";
 import { ScanButtons } from "./components/ScanButtons";
 import { ProductionCurrentItem } from "./components/ProductionCurrentItem";
 import { TestConfigSheet } from "./components/TestConfigSheet";
+import { ProductionSheet } from "./components/ProductionSheet";
 
 const BUILD_DATE = __BUILD_DATE__;
 
@@ -1441,18 +1442,6 @@ export default function App() {
       >
         {result}
       </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          marginTop: "10px",
-        }}
-      >
-      </div>
-
-
-
     </>
     )}
 
@@ -1577,340 +1566,115 @@ export default function App() {
     </>
     )}
 
-    {tab === "prod" && (    
-      <div
-        style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
+    {/* Production下部シート */}
+    {tab === "prod" && (
+      <ProductionSheet
+        sheetLevel={sheetLevel}
+        items={items}
+        results={results}
+        currentIndex={currentIndex}
 
-          height: "100vh",
-
-          background: "white",
-
-          borderTopLeftRadius: "16px",
-          borderTopRightRadius: "16px",
-
-          transform:
-            sheetLevel === 0
-              ? "translateY(calc(100vh - 40px))"
-              : sheetLevel === 1
-              ? "translateY(60vh)"
-              : "translateY(0)",
-
-          transition: "0.3s",
-
-          zIndex: 1000,
-
-          boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-
-          display: "flex",
-          flexDirection: "column",
+        onToggleSheet={() => {
+          // 0 → 1 → 2 → 0の順にシート位置を変更
+          setSheetLevel((prev) =>
+            prev >= 2 ? 0 : prev + 1
+          );
         }}
-      >
-        <div
-          onClick={() =>
-            setSheetLevel(prev =>
-              prev >= 2 ? 0 : prev + 1
-            )
+
+        onLoad={() => {
+          // 通常クリックでConfigファイルを選択
+          fileInputRef.current?.click();
+        }}
+
+        onLoadPointerDown={() => {
+          // 1.5秒長押しでOneDriveから読み込む
+          pressTimer.current =
+            window.setTimeout(async () => {
+              await loadFromOneDrive();
+            }, 1500);
+        }}
+
+        onPointerEnd={() => {
+          // 各ボタン・項目の長押し判定を解除
+          if (pressTimer.current) {
+            clearTimeout(pressTimer.current);
           }
-          style={{
-            height: "40px",
+        }}
 
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
+        onExportClick={() => {
+          // 長押し後に発生するクリックは処理しない
+          if (
+            exportLongPressTriggered.current
+          ) {
+            exportLongPressTriggered.current =
+              false;
 
-            cursor: "pointer",
-          }}
-        >
-          <div
-            style={{
-              width: "40px",
-              height: "4px",
-              borderRadius: "2px",
-              background: "#999",
-            }}
-          />
-        </div>
+            return;
+          }
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            minHeight: 0,
-            padding: "10px",
-          }}
-        >
+          const now = Date.now();
 
-          {/* Top Buttons */}
+          // 400ms以内のダブルクリックでQR付きExcel出力
+          if (
+            now -
+              lastExportClick.current <
+            400
+          ) {
+            exportProductionExcelWithQr();
 
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
-          <button
-            style={{
-              flex: 1,
-              height: "50px",
-              cursor: "pointer",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-            }}
+            lastExportClick.current = 0;
 
-            onClick={() => {
-              fileInputRef.current?.click();
-            }}
+            return;
+          }
 
-            onPointerDown={() => {
-              pressTimer.current =
-                window.setTimeout(async () => {
+          lastExportClick.current = now;
 
-                  await loadFromOneDrive();
+          // シングルクリックで通常Excel出力
+          setTimeout(() => {
+            if (
+              lastExportClick.current ===
+              now
+            ) {
+              exportProductionExcel();
+            }
+          }, 400);
+        }}
 
-                }, 1500);
-            }}
+        onExportPointerDown={() => {
+          exportLongPressTriggered.current =
+            false;
 
-            onPointerUp={() => {
-              if (pressTimer.current) {
-                clearTimeout(pressTimer.current);
-              }
-            }}
+          // 1.5秒長押しでCSV出力
+          pressTimer.current =
+            window.setTimeout(() => {
+              exportLongPressTriggered.current =
+                true;
 
-            onPointerLeave={() => {
-              if (pressTimer.current) {
-                clearTimeout(pressTimer.current);
-              }
-            }}
-          >
-            LOAD
-          </button>
+              exportProductionCsv();
+            }, 1500);
+        }}
 
-          <button
-            style={{
-              flex: 1,
-              height: "50px",
-              cursor: "pointer",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-            }}
+        onClearPointerDown={() => {
+          // 1.5秒長押しでProduction DBを消去
+          pressTimer.current =
+            window.setTimeout(async () => {
+              await clearProductionDB();
+            }, 1500);
+        }}
 
-            onClick={() => {
+        onItemPointerDown={(index) => {
+          // 1.5秒長押しで対象項目を選択
+          pressTimer.current =
+            window.setTimeout(() => {
+              setCurrentIndex(index);
+              setSheetLevel(0);
 
-              if (exportLongPressTriggered.current) {
-                exportLongPressTriggered.current = false;
-                return;
-              }
-
-              const now = Date.now();
-
-              if (
-                now - lastExportClick.current < 400
-              ) {
-                exportProductionExcelWithQr();
-                lastExportClick.current = 0;
-                return;
-              }
-
-              lastExportClick.current = now;
-
-              setTimeout(() => {
-                if (
-                  lastExportClick.current === now
-                ) {
-                  exportProductionExcel();
-                }
-              }, 400);
-            }}
-
-            onPointerDown={() => {
-
-              exportLongPressTriggered.current = false;
-
-              pressTimer.current =
-                window.setTimeout(() => {
-
-                  exportLongPressTriggered.current = true;
-
-                  exportProductionCsv();
-
-                }, 1500);
-
-            }}
-
-            onPointerUp={() => {
-              if (pressTimer.current) {
-                clearTimeout(
-                  pressTimer.current
-                );
-              }
-            }}
-
-            onPointerLeave={() => {
-              if (pressTimer.current) {
-                clearTimeout(
-                  pressTimer.current
-                );
-              }
-            }}
-          >
-            EXPORT
-          </button>
-
-          <button
-            style={{
-              flex: 1,
-              height: "50px",
-              backgroundColor: "#ccc",
-              cursor: "pointer",
-              userSelect: "none",
-              WebkitUserSelect: "none",
-            }}
-            onPointerDown={() => {
-              pressTimer.current =
-                window.setTimeout(
-                  async () => {
-                    await clearProductionDB();
-                  },
-                  1500
-                );
-            }}
-            onPointerUp={() => {
-              if (pressTimer.current) {
-                clearTimeout(
-                  pressTimer.current
-                );
-              }
-            }}
-            onPointerLeave={() => {
-              if (pressTimer.current) {
-                clearTimeout(
-                  pressTimer.current
-                );
-              }
-            }}
-          >
-            CLEAR
-          </button>
-        </div>
-
-
-          {/* Item List */}
-
-          <div
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-
-              flex: 1,
-              minHeight: 0,
-
-              overflowY: "auto",
-              padding: "10px",
-            }}
-          >
-
-            {items.map((item, index) => {
-
-              const completed =
-                (results[item.name] ?? "") !== "";
-
-              const current =
-                index === currentIndex;
-
-              return (
-
-              <div
-                key={item.name}
-
-                onPointerDown={() => {
-                  pressTimer.current = window.setTimeout(
-                    () => {
-
-                      setCurrentIndex(index);
-                      setSheetLevel(0);
-
-                      playSuccess();
-                      vibrateSuccess();
-
-                    },
-                    1500
-                  );
-                }}
-
-                onPointerUp={() => {
-                  if (pressTimer.current) {
-                    clearTimeout(pressTimer.current);
-                  }
-                }}
-
-                onPointerLeave={() => {
-                  if (pressTimer.current) {
-                    clearTimeout(pressTimer.current);
-                  }
-                }}
-
-                onPointerCancel={() => {
-                  if (pressTimer.current) {
-                    clearTimeout(pressTimer.current);
-                  }
-                }}
-
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "120px 60px 1fr",
-
-                    gap: "10px",
-
-                    padding: "10px",
-
-                    userSelect: "none",
-                    WebkitUserSelect: "none",
-                    WebkitTouchCallout: "none",
-
-                    cursor: "pointer",
-
-                    borderBottom:
-                      "1px solid #eee",
-
-                    backgroundColor:
-                      current
-                        ? "#dbeafe"
-                        : "white",
-
-                    color:
-                      completed
-                        ? "#000"
-                        : "#888",
-                  }}
-                >
-                  <div>{item.name}</div>
-                  <div>{item.type}</div>
-
-                  <div
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {results[item.name] ?? ""}
-                  </div>
-                </div>
-              );
-            })}
-
-          </div>  
-          </div>
-
-        </div>
-      )}
+              playSuccess();
+              vibrateSuccess();
+            }, 1500);
+        }}
+      />
+    )}
 
 
     </div>    
