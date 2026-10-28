@@ -59,11 +59,8 @@ import {
 // prodicution / test tab
 import { ModeTabs } from "./components/ModeTabs";
 
-// Camera Overlay
-import { ResultOverlay } from "./components/ResultOverlay";
-
-// Production progress
-import { ProductionProgress } from "./components/ProductionProgress";
+// CameraPreview
+import { CameraPreview } from "./components/CameraPreview";
 
 const BUILD_DATE = __BUILD_DATE__;
 
@@ -1370,240 +1367,46 @@ export default function App() {
     />
 
 
-{/* モード切替タブ */}
-<ModeTabs
-  onProduction={() => {
-    document
-      .getElementById("debugFull")
-      ?.remove();
+    {/* モード切替タブ */}
+    <ModeTabs
+      onProduction={() => {
+        document
+          .getElementById("debugFull")
+          ?.remove();
 
-    document
-      .getElementById("debugCanvas")
-      ?.remove();
+        document
+          .getElementById("debugCanvas")
+          ?.remove();
 
-    setTab("prod");
-  }}
-  onTest={() => {
-    setTab("eval");
-    setSheetLevel(0);
-  }}
-/>
-
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        maxWidth: isMobile
-        ? "320px"
-        : "450px",
-        margin: "0 auto",
-        overflow: "visible",
-        borderRadius: "8px",
-
-        userSelect: "none",
-        WebkitUserSelect: "none",
-        WebkitTouchCallout: "none",
-        
-        touchAction: "manipulation",        
-
+        setTab("prod");
       }}
-      >
+      onTest={() => {
+        setTab("eval");
+        setSheetLevel(0);
+      }}
+    />
 
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        style={{
-        position: "absolute",
-        left: "-9999px",
-        width: "1px",
-        height: "1px"
-        }}
-      />
+    {/* カメラプレビュー表示 */}
+    <CameraPreview
+      videoRef={videoRef}
+      previewCanvasRef={previewCanvasRef}
+      isMobile={isMobile}
+      overlayMessage={overlayMessage}
+      overlayColor={overlayColor}
+      results={results}
+      items={items}
+      currentIndex={currentIndex}
+      progressCount={progressCount}
+      totalCount={totalCount}
+      scanWidth={scanWidth}
+      scanHeight={scanHeight}
+      zoom={zoom}
+      changeZoom={changeZoom}
+      setScanWidth={setScanWidth}
+      setScanHeight={setScanHeight}
+      vibrateSuccess={vibrateSuccess}
+    />
 
-      <canvas
-        ref={previewCanvasRef}
-        onContextMenu={(e) => e.preventDefault()}
-
-        onClick={(e) => {
-
-          const rect =
-            e.currentTarget.getBoundingClientRect();
-
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-
-          const w = rect.width;
-          const h = rect.height;
-
-        // クリック位置判定用のスキャン範囲
-        const {
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-        } = getScanAreaWH(
-          w,
-          h,
-          scanWidth,
-          scanHeight
-        );
-
-        // 左上 → Zoom +
-        if (
-          x < cropX &&
-          y < cropY
-        ) {
-
-          changeZoom(0.5);
-          vibrateSuccess();
-          return;
-
-        }
-
-        // 左下 → Zoom -
-        if (
-          x < cropX &&
-          y > cropY + cropH
-        ) {
-
-          changeZoom(-0.5);
-          vibrateSuccess();
-          return;
-
-        }
-
-        // 上 → Height +
-        if (
-          x >= cropX &&
-          x <= cropX + cropW &&
-          y < cropY
-        ) {
-
-          setScanHeight(prev =>
-            Math.min(60, prev + 5)
-          );
-
-          vibrateSuccess();
-        }
-
-        // 下 → Height -
-        else if (
-          x >= cropX &&
-          x <= cropX + cropW &&
-          y > cropY + cropH
-        ) {
-
-          setScanHeight(prev =>
-            Math.max(5, prev - 5)
-          );
-
-          vibrateSuccess();
-        }
-
-        // 左 → Width +
-        else if (
-          x < cropX &&
-          y >= cropY &&
-          y <= cropY + cropH
-        ) {
-
-          setScanWidth(prev =>
-            Math.min(90, prev + 5)
-          );
-
-          vibrateSuccess();
-        }
-
-        // 右 → Width -
-        else if (
-          x > cropX + cropW &&
-          y >= cropY &&
-          y <= cropY + cropH
-        ) {
-
-          setScanWidth(prev =>
-            Math.max(20, prev - 5)
-          );
-
-          vibrateSuccess();
-        }
-
-        }}
-
-        style={{
-          width: "100%",
-          height: "auto",
-          display: "block",
-          cursor: "pointer",
-
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          WebkitTouchCallout: "none",
-          WebkitTapHighlightColor: "transparent",
-          
-          touchAction: "manipulation",          
-
-        }}
-      />
-
-      {/* 判定結果オーバーレイ */}
-      <ResultOverlay
-        message={overlayMessage}
-        color={overlayColor}
-      />
-
-      {/* 読み取り進捗表示 */}
-      <ProductionProgress
-        results={results}
-        items={items}
-        currentIndex={currentIndex}
-        progressCount={progressCount}
-        totalCount={totalCount}
-      />
-
-      {/* 左下 REGEX等 */}
-      <div
-        style={{
-          position: "absolute",
-          left: "6px",
-          bottom: "0px",
-
-          color: "white",
-          fontSize: "12px",
-          fontWeight: "bold",
-
-          textShadow:
-            "1px 1px 2px black, -1px -1px 2px black",
-
-          pointerEvents: "none",
-        }}
-      >
-        {`RGX: ${items[currentIndex]?.regex || "OFF"}`}
-      </div>
-
-      {/* 右下 Zoom等 */}
-      <div
-        style={{
-          position: "absolute",
-          right: "6px",
-          bottom: "0px",
-
-          color: "white",
-          fontSize: "12px",
-          fontWeight: "bold",
-
-          textShadow:
-            "1px 1px 2px black, -1px -1px 2px black",
-
-          pointerEvents: "none",
-        }}
-      >
-        {`H:${scanHeight}% W:${scanWidth}% Z:${zoom.toFixed(1)}x`}
-      </div>
-
-    </div>
 
       <div
         style={{
