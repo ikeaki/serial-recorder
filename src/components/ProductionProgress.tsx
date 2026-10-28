@@ -122,12 +122,17 @@ export function ProductionProgress({
 
         <span />
 
-        {/* 現在Valueを項目名の開始位置に合わせる */}
         <span
           style={{
+            // 項目名列から最後の進捗列まで使用
+            gridColumn: "3 / -1",
+
             overflow: "hidden",
             textOverflow: "ellipsis",
-            minWidth: 0,
+            whiteSpace: "nowrap",
+
+            // 画面右側へValueを揃える
+            textAlign: "right",
           }}
         >
           {currentValue || "-"}
