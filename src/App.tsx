@@ -55,6 +55,16 @@ import {
   useScanner,
 } from "./hooks/useScanner";
 
+// Components -------
+// prodicution / test tab
+import { ModeTabs } from "./components/ModeTabs";
+
+// Camera Overlay
+import { ResultOverlay } from "./components/ResultOverlay";
+
+// Production progress
+import { ProductionProgress } from "./components/ProductionProgress";
+
 const BUILD_DATE = __BUILD_DATE__;
 
 
@@ -1360,51 +1370,24 @@ export default function App() {
     />
 
 
-    <div
-      style={{
-        display: "flex",
-        marginBottom: "10px",
-        userSelect: "none",
-        WebkitUserSelect: "none",
+{/* モード切替タブ */}
+<ModeTabs
+  onProduction={() => {
+    document
+      .getElementById("debugFull")
+      ?.remove();
 
-      }}
-    >
-      <button
-        style={{
-          flex: 1,
-          height: "36px",
-        }}
-        onClick={() => {
+    document
+      .getElementById("debugCanvas")
+      ?.remove();
 
-          document
-            .getElementById("debugFull")
-            ?.remove();
-
-          document
-            .getElementById("debugCanvas")
-            ?.remove();
-
-          setTab("prod");
-        }}
-      >
-        PRODUCTION MODE
-      </button>
-
-      <button
-        style={{
-          flex: 1,
-          height: "36px",
-        }}
-        onClick={() => {
-          setTab("eval");
-          setSheetLevel(0);
-        }}
-      >
-        TEST MODE
-      </button>
-
-
-    </div>
+    setTab("prod");
+  }}
+  onTest={() => {
+    setTab("eval");
+    setSheetLevel(0);
+  }}
+/>
 
     <div
       style={{
@@ -1565,95 +1548,20 @@ export default function App() {
         }}
       />
 
-      {
-        overlayMessage && (
-          <div
-            style={{
-              position: "absolute",
+      {/* 判定結果オーバーレイ */}
+      <ResultOverlay
+        message={overlayMessage}
+        color={overlayColor}
+      />
 
-              left: "50%",
-              top: "50%",
-
-              transform:
-                "translate(-50%, -50%)",
-
-              color: overlayColor,
-
-              fontSize: "48px",
-              fontWeight: "bold",
-
-              textShadow:
-                "2px 2px 4px black",
-
-              pointerEvents: "none",
-
-              zIndex: 999,
-            }}
-          >
-            {overlayMessage}
-          </div>
-        )
-      }
-
-      <div
-        style={{
-          position: "absolute",
-          top: "0px",
-          left: "6px",
-
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-
-          gap: "6px",
-
-          color: "white",
-          fontSize: "12px",
-          fontWeight: "bold",
-
-          width: "calc(100% - 12px)",
-
-          overflow: "hidden",
-          whiteSpace: "nowrap",
-
-          textAlign: "left",
-
-          textShadow:
-            "1px 1px 2px black, -1px -1px 2px black",
-
-          pointerEvents: "none",
-        }}
-      >
-        <span>
-          {results["Model"] ?? "-"}
-        </span>
-
-        <span>｜</span>
-
-        <span
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          {items[currentIndex]?.name ?? "-"}
-        </span>
-
-        <span>｜</span>
-
-        <span>
-          {items[currentIndex]?.type ?? "-"}
-        </span>
-
-        <span>｜</span>
-
-        <span>
-          {progressCount}/{totalCount}
-        </span>
-      </div>
-
+      {/* 読み取り進捗表示 */}
+      <ProductionProgress
+        results={results}
+        items={items}
+        currentIndex={currentIndex}
+        progressCount={progressCount}
+        totalCount={totalCount}
+      />
 
       {/* 左下 REGEX等 */}
       <div
