@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run i18n:generate && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "i18n:generate": "node scripts/generate-i18n.mjs"
