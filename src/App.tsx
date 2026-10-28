@@ -337,7 +337,7 @@ export default function App() {
       vibrateSuccess();
     };
 
-  // 解析結果をReact Stateへ反映
+  // Excel Configを解析して画面反映・永続保存
   const loadExcelConfig = async (
     arrayBuffer: ArrayBuffer
   ): Promise<void> => {
@@ -348,14 +348,11 @@ export default function App() {
       arrayBuffer
     );
 
-    setItems(
-      loadedItems
-    );
+    // 読み込んだConfigを画面へ反映
+    setItems(loadedItems);
+    setResults(loadedResults);
 
-    setResults(
-      loadedResults
-    );
-
+    // 最初のProduction入力項目を選択
     const startIndex =
       loadedItems.findIndex(
         isProductionInputItem
@@ -366,6 +363,14 @@ export default function App() {
         ? startIndex
         : 0
     );
+
+    // Configと初期値をIndexedDBへ保存
+    await saveProductionRecord({
+      configItems: loadedItems,
+      ...loadedResults,
+      updateTime:
+        new Date().toLocaleString(),
+    });
   };
 
   const loadConfig = (
