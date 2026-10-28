@@ -59,6 +59,7 @@ import { ModeTabs } from "./components/ModeTabs";
 import { CameraPreview } from "./components/CameraPreview";
 import { ScanButtons } from "./components/ScanButtons";
 import { ProductionCurrentItem } from "./components/ProductionCurrentItem";
+import { TestConfigSheet } from "./components/TestConfigSheet";
 
 const BUILD_DATE = __BUILD_DATE__;
 
@@ -1455,334 +1456,30 @@ export default function App() {
     </>
     )}
 
-
-{tab === "eval" && (
-  <div
-    style={{
-      position: "fixed",
-      left: 0,
-      right: 0,
-      bottom: 0,
-
-      height:
-        configMode === "send"
-          ? "100dvh"
-          : testSheetOpen
-            ? "320px"
-            : "40px",
-
-      background: "white",
-
-      borderTopLeftRadius:
-        configMode === "send"
-          ? "0px"
-          : "16px",
-
-      borderTopRightRadius:
-        configMode === "send"
-          ? "0px"
-          : "16px",
-
-      transition: "height 0.3s",
-
-      zIndex: 1000,
-
-      boxShadow:
-        "0 -2px 10px rgba(0,0,0,0.2)",
-
-      display: "flex",
-      flexDirection: "column",
-
-      overflow: "hidden",
-      boxSizing: "border-box",
-    }}
-  >
-    {configMode !== "send" && (
-      <div
-        onClick={() =>
-          setTestSheetOpen(
-            prev => !prev
-          )
-        }
-        style={{
-          height: "40px",
-          minHeight: "40px",
-
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-
-          cursor: "pointer",
-        }}
-      >
-        <div
-          style={{
-            width: "40px",
-            height: "4px",
-            borderRadius: "2px",
-            background: "#999",
+    {tab === "eval" && (
+      <>
+        {/* TESTモードのConfig送受信シート */}
+        <TestConfigSheet
+          configMode={configMode}
+          testSheetOpen={testSheetOpen}
+          qrImage={qrImage}
+          currentFrame={currentFrame}
+          sendFrameCount={sendFrames.length}
+          transferId={transferId}
+          receivedCount={receivedCount}
+          receiveTotal={receiveTotal}
+          receiveStatus={receiveStatus}
+          onToggleSheet={() => {
+            // TESTシートの開閉を切り替える
+            setTestSheetOpen((prev) => !prev);
           }}
+          onSendConfig={sendConfig}
+          onReceiveConfig={startReceiveConfig}
+          onStopSend={stopSendConfig}
+          onStopReceive={stopReceiveConfig}
         />
-      </div>
+      </>
     )}
-
-    {(testSheetOpen ||
-      configMode === "send") && (
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-
-          padding:
-            configMode === "send"
-              ? "8px"
-              : "10px",
-
-          display: "flex",
-          flexDirection: "column",
-          gap: "10px",
-
-          boxSizing: "border-box",
-          overflow: "hidden",
-        }}
-      >
-        {configMode !== "send" && (
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              flexShrink: 0,
-            }}
-          >
-            <button
-              style={{
-                flex: 1,
-                height: "50px",
-              }}
-              onClick={sendConfig}
-            >
-              SEND CONFIG
-            </button>
-
-            <button
-              style={{
-                flex: 1,
-                height: "50px",
-              }}
-              onClick={
-                startReceiveConfig
-              }
-            >
-              RECEIVE CONFIG
-            </button>
-          </div>
-        )}
-
-        {configMode === "none" && (
-          <div
-            style={{
-              border:
-                "1px solid #ccc",
-              borderRadius: "8px",
-
-              flex: 1,
-
-              display: "flex",
-              justifyContent:
-                "center",
-              alignItems: "center",
-            }}
-          >
-            Select Mode
-          </div>
-        )}
-
-        {configMode === "send" && (
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              width: "100%",
-
-              display: "flex",
-              flexDirection: "column",
-              justifyContent:
-                "center",
-              alignItems: "center",
-
-              overflow: "hidden",
-            }}
-          >
-            {qrImage ? (
-              <img
-                src={qrImage}
-                alt="QR Code"
-                style={{
-                  height:
-                    "min(94vw, calc(100dvh - 110px))",
-
-                  maxWidth: "100%",
-                  objectFit:
-                    "contain",
-                  display: "block",
-                }}
-              />
-            ) : (
-              <div>
-                Generating QR Code...
-              </div>
-            )}
-
-            <div
-              style={{
-                marginTop: "4px",
-                fontSize: "18px",
-                fontWeight: "bold",
-                textAlign: "center",
-                flexShrink: 0,
-              }}
-            >
-              Frame{" "}
-              {currentFrame + 1}
-              {" / "}
-              {sendFrames.length}
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                stopSendConfig
-              }
-              style={{
-                marginTop: "8px",
-                width: "160px",
-                height: "44px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                flexShrink: 0,
-              }}
-            >
-              STOP
-            </button>
-          </div>
-        )}
-
-        {configMode ===
-          "receive" && (
-          <div
-            style={{
-              flex: 1,
-
-              display: "flex",
-              flexDirection: "column",
-              justifyContent:
-                "center",
-              alignItems: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                textAlign: "center",
-              }}
-            >
-              {receiveStatus}
-            </div>
-
-            <div
-              style={{
-                marginTop: "4px",
-                maxWidth: "90%",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                fontSize: "11px",
-                color: "#666",
-              }}
-            >
-              ID: {transferId || "-"}
-            </div>
-
-            <div
-              style={{
-                marginTop: "8px",
-                fontSize: "16px",
-              }}
-            >
-              {receivedCount}
-              {" / "}
-              {receiveTotal}
-            </div>
-
-            <div
-              style={{
-                marginTop: "8px",
-                width: "80%",
-                height: "12px",
-                borderRadius: "6px",
-                background: "#ddd",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width:
-                    receiveTotal > 0
-                      ? `${
-                          (
-                            receivedCount /
-                            receiveTotal
-                          ) * 100
-                        }%`
-                      : "0%",
-
-                  height: "100%",
-                  background:
-                    "#22c55e",
-
-                  transition:
-                    "width 0.2s",
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                marginTop: "4px",
-                fontWeight: "bold",
-              }}
-            >
-              {receiveTotal > 0
-                ? Math.floor(
-                    (
-                      receivedCount /
-                      receiveTotal
-                    ) * 100
-                  )
-                : 0}
-              %
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                stopReceiveConfig
-              }
-              style={{
-                marginTop: "8px",
-                width: "140px",
-                height: "36px",
-              }}
-            >
-              STOP
-            </button>
-          </div>
-        )}
-      </div>
-    )}
-  </div>
-)}
 
 
     {tab === "prod" && (
