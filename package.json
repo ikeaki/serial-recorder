@@ -15,10 +15,12 @@
     "@capacitor/core": "^8.5.2",
     "@zxing/browser": "^0.2.1",
     "exceljs": "^4.4.0",
+    "i18next": "^26.5.11",
     "pako": "^3.0.2",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-i18next": "^17.1.9",
     "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },

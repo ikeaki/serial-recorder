@@ -1,0 +1,10 @@
+{
+  "app": {
+    "name": "Serial Recorder"
+  },
+  "language": {
+    "japanese": "Japanese",
+    "english": "English",
+    "chineseSimplified": "Simplified Chinese"
+  }
+}
