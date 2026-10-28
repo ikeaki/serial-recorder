@@ -1,3 +1,11 @@
+import type {
+  AppLanguage,
+} from "../i18n/i18n";
+
+import {
+  LanguageSelector,
+} from "./LanguageSelector";
+
 type ConfigMode =
   | "none"
   | "send"
@@ -45,6 +53,15 @@ type TestConfigSheetProps = {
 
   // Config受信停止処理
   onStopReceive: () => void;
+
+  // 現在選択中の表示言語
+  language: AppLanguage;
+
+  // 表示言語の変更処理
+  onLanguageChange: (
+    language: AppLanguage
+  ) => void | Promise<void>;
+
 };
 
 export function TestConfigSheet({
@@ -62,6 +79,8 @@ export function TestConfigSheet({
   onReceiveConfig,
   onStopSend,
   onStopReceive,
+  language,
+  onLanguageChange,
 }: TestConfigSheetProps) {
 
     return (
@@ -151,6 +170,17 @@ export function TestConfigSheet({
               overflow: "hidden",
             }}
           >
+
+            {/* Config送信中以外は表示言語選択を表示 */}
+            {configMode !== "send" && (
+              <LanguageSelector
+                language={language}
+                onLanguageChange={
+                  onLanguageChange
+                }
+              />
+            )}
+
             {/* Config送信中以外は送信／受信ボタンを表示 */}
             {configMode !== "send" && (
               <div

@@ -62,17 +62,41 @@ import { ProductionCurrentItem } from "./components/ProductionCurrentItem";
 import { TestConfigSheet } from "./components/TestConfigSheet";
 import { ProductionSheet } from "./components/ProductionSheet";
 
+import {
+  useTranslation,
+} from "react-i18next";
+
+import {
+  LANGUAGE_STORAGE_KEY,
+  type AppLanguage,
+} from "./i18n/i18n";
+
 const BUILD_DATE = __BUILD_DATE__;
 
 
 export default function App() {
 
+  const {
+    i18n,
+  } = useTranslation();
+
+  // 現在選択中の表示言語
+  const [
+    language,
+    setLanguage,
+  ] = useState<AppLanguage>(
+    i18n.language === "en" ||
+    i18n.language === "zh-CN"
+      ? i18n.language
+      : "ja"
+  );
+  
   const { playSuccess, playError, vibrateSuccess, vibrateError } = useFeedback();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [result, setResult] = useState("Not Scanned");
 
+  const [result, setResult] = useState("Not Scanned");
 
   const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth, setScanWidth] = useState(50);
@@ -147,6 +171,26 @@ export default function App() {
 
   const [overlayColor, setOverlayColor] = useState("#00ff00");
 
+  // 表示言語を変更し、次回起動用に保存
+  const changeLanguage = async (
+    nextLanguage: AppLanguage
+  ): Promise<void> => {
+    // i18nextの表示言語を切り替える
+    await i18n.changeLanguage(
+      nextLanguage
+    );
+
+    // React側の選択状態を更新
+    setLanguage(
+      nextLanguage
+    );
+
+    // 次回起動時に復元するため保存
+    localStorage.setItem(
+      LANGUAGE_STORAGE_KEY,
+      nextLanguage
+    );
+  };
 
   const saveCurrentProduction = async (
     nextResults: Record<string, string> = results
@@ -1463,6 +1507,10 @@ export default function App() {
           receivedCount={receivedCount}
           receiveTotal={receiveTotal}
           receiveStatus={receiveStatus}
+
+          language={language}
+          onLanguageChange={changeLanguage}
+
           onToggleSheet={() => {
             // TESTシートの開閉を切り替える
             setTestSheetOpen((prev) => !prev);

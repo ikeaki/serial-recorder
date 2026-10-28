@@ -6,6 +6,7 @@
     "title": "言語",
     "japanese": "日本語",
     "english": "英語",
-    "chineseSimplified": "簡体字中国語"
+    "chineseSimplified": "簡体字中国語",
+    "selectLabel": "表示言語"
   }
 }
