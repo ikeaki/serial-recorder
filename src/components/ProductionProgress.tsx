@@ -24,56 +24,110 @@ export function ProductionProgress({
   progressCount,
   totalCount,
 }: ProductionProgressProps) {
+
+  // 現在選択中項目のValue
+  const currentValue =
+    results[
+    items[currentIndex]?.name
+    ] ?? "-";
+
   return (
     <div
       style={{
         position: "absolute",
         top: "0px",
         left: "6px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        gap: "6px",
+        width: "calc(100% - 12px)",
+
         color: "white",
         fontSize: "12px",
         fontWeight: "bold",
-        width: "calc(100% - 12px)",
+
         overflow: "hidden",
-        whiteSpace: "nowrap",
         textAlign: "left",
+
         textShadow:
           "1px 1px 2px black, -1px -1px 2px black",
+
         pointerEvents: "none",
       }}
     >
-      <span>
-        {results["Model"] ?? "-"}
-      </span>
-
-      <span>｜</span>
-
-      <span
+      {/* 1行目：Model・現在項目・Type・進捗 */}
+      <div
         style={{
+          display: "grid",
+          gridTemplateColumns:
+            "auto 6px minmax(0, 1fr) 6px auto 6px auto",
+          alignItems: "center",
+          columnGap: "6px",
+
           overflow: "hidden",
-          textOverflow: "ellipsis",
-          flex: 1,
-          minWidth: 0,
+          whiteSpace: "nowrap",
         }}
       >
-        {items[currentIndex]?.name ?? "-"}
-      </span>
+        {/* Model */}
+        <span>
+          {results["Model"] ?? "-"}
+        </span>
 
-      <span>｜</span>
+        <span>｜</span>
 
-      <span>
-        {items[currentIndex]?.type ?? "-"}
-      </span>
+        {/* 現在項目名 */}
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            minWidth: 0,
+          }}
+        >
+          {items[currentIndex]?.name ?? "-"}
+        </span>
 
-      <span>｜</span>
+        <span>｜</span>
 
-      <span>
-        {progressCount}/{totalCount}
-      </span>
+        {/* 現在項目のType */}
+        <span>
+          {items[currentIndex]?.type ?? "-"}
+        </span>
+
+        <span>｜</span>
+
+        {/* Production進捗 */}
+        <span>
+          {progressCount}/{totalCount}
+        </span>
+      </div>
+
+      {/* 2行目：現在項目のValue */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "auto 6px minmax(0, 1fr) 6px auto 6px auto",
+          columnGap: "6px",
+
+          marginTop: "2px",
+
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {/* Model列と最初の区切り分を空ける */}
+        <span />
+
+        <span />
+
+        {/* 現在Valueを項目名の開始位置に合わせる */}
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            minWidth: 0,
+          }}
+        >
+          {currentValue || "-"}
+        </span>
+      </div>
     </div>
   );
 }
