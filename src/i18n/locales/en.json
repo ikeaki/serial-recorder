@@ -8,5 +8,30 @@
     "english": "English",
     "chineseSimplified": "Simplified Chinese",
     "selectLabel": "Display Language"
+  },
+  "mode": {
+    "production": "PRODUCTION MODE",
+    "test": "TEST MODE"
+  },
+  "scan": {
+    "qrBarcode": "Scan QR/Barcode",
+    "ocr": "Scan OCR"
+  },
+  "common": {
+    "scanning": "Scanning...",
+    "stop": "STOP"
+  },
+  "config": {
+    "send": "SEND CONFIG",
+    "receive": "RECEIVE CONFIG",
+    "selectMode": "Select Mode",
+    "generatingQr": "Generating QR Code...",
+    "frameProgress": "Frame {{current}} / {{total}}",
+    "id": "ID"
+  },
+  "production": {
+    "load": "LOAD",
+    "export": "EXPORT",
+    "clear": "CLEAR"
   }
 }

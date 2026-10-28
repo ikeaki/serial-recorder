@@ -1,3 +1,7 @@
+import {
+  useTranslation,
+} from "react-i18next";
+
 import type {
   AppLanguage,
 } from "../i18n/i18n";
@@ -83,75 +87,78 @@ export function TestConfigSheet({
   onLanguageChange,
 }: TestConfigSheetProps) {
 
-    return (
-      <div
-        style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
+  // 現在の言語に対応した翻訳関数を取得
+  const { t } = useTranslation();
 
-          height:
-            configMode === "send"
-              ? "100dvh"
-              : testSheetOpen
-                ? "320px"
-                : "40px",
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
 
-          background: "white",
+        height:
+          configMode === "send"
+            ? "100dvh"
+            : testSheetOpen
+              ? "320px"
+              : "40px",
 
-          borderTopLeftRadius:
-            configMode === "send"
-              ? "0px"
-              : "16px",
+        background: "white",
 
-          borderTopRightRadius:
-            configMode === "send"
-              ? "0px"
-              : "16px",
+        borderTopLeftRadius:
+          configMode === "send"
+            ? "0px"
+            : "16px",
 
-          transition: "height 0.3s",
-          zIndex: 1000,
+        borderTopRightRadius:
+          configMode === "send"
+            ? "0px"
+            : "16px",
 
-          boxShadow:
-            "0 -2px 10px rgba(0,0,0,0.2)",
+        transition: "height 0.3s",
+        zIndex: 1000,
 
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          boxSizing: "border-box",
-        }}
-      >
-        {/* Config送信中以外は開閉ハンドルを表示 */}
-        {configMode !== "send" && (
+        boxShadow:
+          "0 -2px 10px rgba(0,0,0,0.2)",
+
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* Config送信中以外は開閉ハンドルを表示 */}
+      {configMode !== "send" && (
+        <div
+          onClick={onToggleSheet}
+          style={{
+            height: "40px",
+            minHeight: "40px",
+
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+
+            cursor: "pointer",
+          }}
+        >
+          {/* シート開閉用のバー */}
           <div
-            onClick={onToggleSheet}
             style={{
-              height: "40px",
-              minHeight: "40px",
-
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-
-              cursor: "pointer",
+              width: "40px",
+              height: "4px",
+              borderRadius: "2px",
+              background: "#999",
             }}
-          >
-            {/* シート開閉用のバー */}
-            <div
-              style={{
-                width: "40px",
-                height: "4px",
-                borderRadius: "2px",
-                background: "#999",
-              }}
-            />
-          </div>
-        )}
+          />
+        </div>
+      )}
 
-        {/* シート展開中またはConfig送信中に内容を表示 */}
-        {(testSheetOpen ||
-          configMode === "send") && (
+      {/* シート展開中またはConfig送信中に内容を表示 */}
+      {(testSheetOpen ||
+        configMode === "send") && (
           <div
             style={{
               flex: 1,
@@ -198,7 +205,7 @@ export function TestConfigSheet({
                   }}
                   onClick={onSendConfig}
                 >
-                  SEND CONFIG
+                  {t("config.send")}
                 </button>
 
                 {/* Config受信開始 */}
@@ -209,7 +216,7 @@ export function TestConfigSheet({
                   }}
                   onClick={onReceiveConfig}
                 >
-                  RECEIVE CONFIG
+                  {t("config.receive")}
                 </button>
               </div>
             )}
@@ -230,7 +237,7 @@ export function TestConfigSheet({
                   alignItems: "center",
                 }}
               >
-                Select Mode
+                {t("config.selectMode")}
               </div>
             )}
 
@@ -268,7 +275,7 @@ export function TestConfigSheet({
                   />
                 ) : (
                   <div>
-                    Generating QR Code...
+                    {t("config.generatingQr")}
                   </div>
                 )}
 
@@ -282,10 +289,10 @@ export function TestConfigSheet({
                     flexShrink: 0,
                   }}
                 >
-                  Frame{" "}
-                  {currentFrame + 1}
-                  {" / "}
-                  {sendFrameCount}
+                  {t("config.frameProgress", {
+                    current: currentFrame + 1,
+                    total: sendFrameCount,
+                  })}
                 </div>
 
                 {/* Config送信停止 */}
@@ -301,7 +308,7 @@ export function TestConfigSheet({
                     flexShrink: 0,
                   }}
                 >
-                  STOP
+                  {t("common.stop")}
                 </button>
               </div>
             )}
@@ -309,124 +316,124 @@ export function TestConfigSheet({
             {/* Config受信中の状態表示 */}
             {configMode ===
               "receive" && (
-              <div
-                style={{
-                  flex: 1,
-
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent:
-                    "center",
-                  alignItems: "center",
-                }}
-              >
-                {/* Config受信状態 */}
                 <div
                   style={{
-                    fontSize: "18px",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                  }}
-                >
-                  {receiveStatus}
-                </div>
+                    flex: 1,
 
-                {/* 受信中のConfig識別子 */}
-                <div
-                  style={{
-                    marginTop: "4px",
-                    maxWidth: "90%",
-                    overflow: "hidden",
-                    textOverflow:
-                      "ellipsis",
-                    whiteSpace: "nowrap",
-                    fontSize: "11px",
-                    color: "#666",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent:
+                      "center",
+                    alignItems: "center",
                   }}
                 >
-                  ID: {transferId || "-"}
-                </div>
-
-                {/* 受信済みフレーム数 */}
-                <div
-                  style={{
-                    marginTop: "8px",
-                    fontSize: "16px",
-                  }}
-                >
-                  {receivedCount}
-                  {" / "}
-                  {receiveTotal}
-                </div>
-
-                {/* Config受信進捗バー */}
-                <div
-                  style={{
-                    marginTop: "8px",
-                    width: "80%",
-                    height: "12px",
-                    borderRadius: "6px",
-                    background: "#ddd",
-                    overflow: "hidden",
-                  }}
-                >
+                  {/* Config受信状態 */}
                   <div
                     style={{
-                      width:
-                        receiveTotal > 0
-                          ? `${
-                              (
-                                receivedCount /
-                                receiveTotal
-                              ) * 100
-                            }%`
-                          : "0%",
-
-                      height: "100%",
-                      background:
-                        "#22c55e",
-
-                      transition:
-                        "width 0.2s",
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      textAlign: "center",
                     }}
-                  />
-                </div>
+                  >
+                    {receiveStatus}
+                  </div>
 
-                {/* Config受信進捗率 */}
-                <div
-                  style={{
-                    marginTop: "4px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {receiveTotal > 0
-                    ? Math.floor(
+                  {/* 受信中のConfig識別子 */}
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      maxWidth: "90%",
+                      overflow: "hidden",
+                      textOverflow:
+                        "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: "11px",
+                      color: "#666",
+                    }}
+                  >
+                    {t("config.id")}:{" "}
+                    {transferId || "-"}
+                  </div>
+
+                  {/* 受信済みフレーム数 */}
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      fontSize: "16px",
+                    }}
+                  >
+                    {receivedCount}
+                    {" / "}
+                    {receiveTotal}
+                  </div>
+
+                  {/* Config受信進捗バー */}
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      width: "80%",
+                      height: "12px",
+                      borderRadius: "6px",
+                      background: "#ddd",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width:
+                          receiveTotal > 0
+                            ? `${(
+                              receivedCount /
+                              receiveTotal
+                            ) * 100
+                            }%`
+                            : "0%",
+
+                        height: "100%",
+                        background:
+                          "#22c55e",
+
+                        transition:
+                          "width 0.2s",
+                      }}
+                    />
+                  </div>
+
+                  {/* Config受信進捗率 */}
+                  <div
+                    style={{
+                      marginTop: "4px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {receiveTotal > 0
+                      ? Math.floor(
                         (
                           receivedCount /
                           receiveTotal
                         ) * 100
                       )
-                    : 0}
-                  %
-                </div>
+                      : 0}
+                    %
+                  </div>
 
-                {/* Config受信停止 */}
-                <button
-                  type="button"
-                  onClick={onStopReceive}
-                  style={{
-                    marginTop: "8px",
-                    width: "140px",
-                    height: "36px",
-                  }}
-                >
-                  STOP
-                </button>
-              </div>
-            )}
+                  {/* Config受信停止 */}
+                  <button
+                    type="button"
+                    onClick={onStopReceive}
+                    style={{
+                      marginTop: "8px",
+                      width: "140px",
+                      height: "36px",
+                    }}
+                  >
+                    {t("common.stop")}
+                  </button>
+                </div>
+              )}
           </div>
         )}
-      </div>
-    );
+    </div>
+  );
 
 }

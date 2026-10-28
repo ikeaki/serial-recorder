@@ -1,3 +1,7 @@
+import {
+  useTranslation,
+} from "react-i18next";
+
 type ScanButtonsProps = {
   // QR・バーコードを読み取り中か
   scanning: boolean;
@@ -23,54 +27,57 @@ export function ScanButtons({
   onRunOCR,
 }: ScanButtonsProps) {
 
-    return (
+  // 現在の言語に対応した翻訳関数を取得
+  const { t } = useTranslation();
+
+  return (
     <div
-        style={{
+      style={{
         display: "flex",
         gap: "10px",
         marginTop: "10px",
-        }}
+      }}
     >
-        {/* QR・バーコード読取ボタン */}
-        <button
+      {/* QR・バーコード読取ボタン */}
+      <button
         style={{
-            flex: 1,
-            height: "48px",
-            fontSize: "16px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
+          flex: 1,
+          height: "48px",
+          fontSize: "16px",
+          userSelect: "none",
+          WebkitUserSelect: "none",
         }}
         disabled={
-            scanning ||
-            ocrLoading
+          scanning ||
+          ocrLoading
         }
         onClick={onScanQr}
-        >
+      >
         {scanning
-            ? "Scanning..."
-            : "Scan QR/Barcode"}
-        </button>
+          ? t("common.scanning")
+          : t("scan.qrBarcode")}
+      </button>
 
-        {/* OCR読取ボタン */}
-        <button
+      {/* OCR読取ボタン */}
+      <button
         style={{
-            flex: 1,
-            height: "48px",
-            fontSize: "16px",
-            userSelect: "none",
-            WebkitUserSelect: "none",
+          flex: 1,
+          height: "48px",
+          fontSize: "16px",
+          userSelect: "none",
+          WebkitUserSelect: "none",
         }}
         disabled={
-            scanning ||
-            ocrLoading ||
-            !ocrReady
+          scanning ||
+          ocrLoading ||
+          !ocrReady
         }
         onClick={onRunOCR}
-        >
+      >
         {ocrLoading
-            ? "Scanning..."
-            : "Scan OCR"}
-        </button>
+          ? t("common.scanning")
+          : t("scan.ocr")}
+      </button>
     </div>
-    );
+  );
 }

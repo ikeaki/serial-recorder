@@ -8,5 +8,30 @@
     "english": "英語",
     "chineseSimplified": "簡体字中国語",
     "selectLabel": "表示言語"
+  },
+  "mode": {
+    "production": "生産モード",
+    "test": "テストモード"
+  },
+  "scan": {
+    "qrBarcode": "QR／バーコード読取",
+    "ocr": "OCR読取"
+  },
+  "common": {
+    "scanning": "読取中...",
+    "stop": "停止"
+  },
+  "config": {
+    "send": "CONFIG送信",
+    "receive": "CONFIG受信",
+    "selectMode": "モードを選択",
+    "generatingQr": "QRコード生成中...",
+    "frameProgress": "フレーム {{current}} / {{total}}",
+    "id": "ID"
+  },
+  "production": {
+    "load": "読込",
+    "export": "出力",
+    "clear": "消去"
   }
 }

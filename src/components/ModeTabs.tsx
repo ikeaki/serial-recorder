@@ -1,3 +1,7 @@
+import {
+  useTranslation,
+} from "react-i18next";
+
 type ModeTabsProps = {
   // PRODUCTION MODE選択
   onProduction: () => void;
@@ -10,6 +14,10 @@ export function ModeTabs({
   onProduction,
   onTest,
 }: ModeTabsProps) {
+
+  // 現在の言語に対応した翻訳関数を取得
+  const { t } = useTranslation();
+
   return (
     <div
       style={{
@@ -26,7 +34,7 @@ export function ModeTabs({
         }}
         onClick={onProduction}
       >
-        PRODUCTION MODE
+        {t("mode.production")}
       </button>
 
       <button
@@ -36,7 +44,7 @@ export function ModeTabs({
         }}
         onClick={onTest}
       >
-        TEST MODE
+        {t("mode.test")}
       </button>
     </div>
   );

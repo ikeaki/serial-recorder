@@ -8,5 +8,30 @@
     "english": "英语",
     "chineseSimplified": "简体中文",
     "selectLabel": "显示语言"
+  },
+  "mode": {
+    "production": "生产模式",
+    "test": "测试模式"
+  },
+  "scan": {
+    "qrBarcode": "扫描二维码/条形码",
+    "ocr": "扫描OCR"
+  },
+  "common": {
+    "scanning": "扫描中...",
+    "stop": "停止"
+  },
+  "config": {
+    "send": "发送CONFIG",
+    "receive": "接收CONFIG",
+    "selectMode": "选择模式",
+    "generatingQr": "正在生成二维码...",
+    "frameProgress": "帧 {{current}} / {{total}}",
+    "id": "ID"
+  },
+  "production": {
+    "load": "加载",
+    "export": "导出",
+    "clear": "清除"
   }
 }

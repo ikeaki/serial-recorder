@@ -1,6 +1,11 @@
+import {
+  useTranslation,
+} from "react-i18next";
+
 import type {
   ScanItem,
 } from "../types";
+
 
 type ProductionSheetProps = {
   // Productionシートの表示位置
@@ -56,6 +61,9 @@ export function ProductionSheet({
   onClearPointerDown,
   onItemPointerDown,
 }: ProductionSheetProps) {
+
+  // 現在の言語に対応した翻訳関数を取得
+  const { t } = useTranslation();
 
   return (
     <div
@@ -146,7 +154,7 @@ export function ProductionSheet({
             onPointerUp={onPointerEnd}
             onPointerLeave={onPointerEnd}
           >
-            LOAD
+            {t("production.load")}
           </button>
 
           {/* Production結果出力 */}
@@ -163,7 +171,7 @@ export function ProductionSheet({
             onPointerUp={onPointerEnd}
             onPointerLeave={onPointerEnd}
           >
-            EXPORT
+            {t("production.export")}
           </button>
 
           {/* Production結果消去 */}
@@ -180,7 +188,7 @@ export function ProductionSheet({
             onPointerUp={onPointerEnd}
             onPointerLeave={onPointerEnd}
           >
-            CLEAR
+            {t("production.clear")}
           </button>
         </div>
 
