@@ -33,5 +33,40 @@
     "load": "読込",
     "export": "出力",
     "clear": "消去"
+  },
+  "result": {
+    "latestScan": "最新スキャン",
+    "notScanned": "未スキャン",
+    "configUrlNotFound": "ConfigURLが見つかりません",
+    "configUrlLoaded": "ConfigURLを読み込みました",
+    "configUrlLoadFailed": "ConfigURLの読み込みに失敗しました",
+    "duplicate": "現在のユニット内で重複しています",
+    "productionItemNotFound": "Production項目が見つかりません",
+    "cameraNotReady": "カメラの準備ができていません",
+    "scanTimeout": "スキャンがタイムアウトしました",
+    "qrScanFailed": "QRコードの読取に失敗しました",
+    "ocrNotReady": "OCRの準備ができていません",
+    "canvasCreateFailed": "Canvasの作成に失敗しました",
+    "ocrFailed": "OCR読取に失敗しました",
+    "ocrFailedWithConfidence": "OCR読取に失敗しました（{{confidence}}%）",
+    "formatError": "形式エラー：{{text}}",
+    "invalidRegex": "正規表現が無効です",
+    "ocrSuccess": "OCR：{{text}}（{{confidence}}%）",
+    "sendConfigFailed": "Config送信に失敗しました",
+    "sendingConfig": "Config送信中：{{count}}フレーム",
+    "receiveConfigFailed": "Config受信に失敗しました：{{message}}",
+    "receivedConfigLoaded": "受信したConfigを読み込みました",
+    "zoomNotSupported": "ズームに対応していません"
+  },
+  "overlay": {
+    "ok": "✓ OK",
+    "duplicate": "✕ 重複",
+    "item": "✕ 項目",
+    "camera": "✕ カメラ",
+    "qr": "✕ QR",
+    "ocr": "✕ OCR",
+    "format": "✕ 形式",
+    "configError": "✕ CONFIG",
+    "configSuccess": "✓ CONFIG"
   }
 }

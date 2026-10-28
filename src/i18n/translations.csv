@@ -17,6 +17,37 @@ config.generatingQr,QRコード生成中...,Generating QR Code...,正在生成�
 config.frameProgress,フレーム {{current}} / {{total}},Frame {{current}} / {{total}},帧 {{current}} / {{total}}
 common.stop,停止,STOP,停止
 config.id,ID,ID,ID
-production.load,読込,LOAD,加载
-production.export,出力,EXPORT,导出
+production.load,読込,LOAD,导入数据
+production.export,出力,EXPORT,导出数据
 production.clear,消去,CLEAR,清除
+result.latestScan,最新スキャン,Latest Scan,最新扫描
+result.notScanned,未スキャン,Not Scanned,尚未扫描
+result.configUrlNotFound,ConfigURLが見つかりません,ConfigURL Not Found,未找到ConfigURL
+result.configUrlLoaded,ConfigURLを読み込みました,ConfigURL Loaded,ConfigURL已加载
+result.configUrlLoadFailed,ConfigURLの読み込みに失敗しました,ConfigURL Load Failed,ConfigURL加载失败
+result.duplicate,現在のユニット内で重複しています,Duplicate In Current Unit,当前单元中存在重复数据
+result.productionItemNotFound,Production項目が見つかりません,Production Item Not Found,未找到Production项目
+result.cameraNotReady,カメラの準備ができていません,Camera Not Ready,相机尚未准备完成
+result.scanTimeout,スキャンがタイムアウトしました,Scan Timeout,扫描超时
+result.qrScanFailed,QRコードの読取に失敗しました,QR Scan Failed,二维码扫描失败
+result.ocrNotReady,OCRの準備ができていません,OCR Not Ready,OCR尚未准备完成
+result.canvasCreateFailed,Canvasの作成に失敗しました,Canvas Create Failed,Canvas创建失败
+result.ocrFailed,OCR読取に失敗しました,OCR Failed,OCR识别失败
+result.ocrFailedWithConfidence,OCR読取に失敗しました（{{confidence}}%）,OCR Failed ({{confidence}}%),OCR识别失败（{{confidence}}%）
+result.formatError,形式エラー：{{text}},Format Error: {{text}},格式错误：{{text}}
+result.invalidRegex,正規表現が無効です,Invalid Regex,正则表达式无效
+result.ocrSuccess,OCR：{{text}}（{{confidence}}%）,OCR: {{text}} ({{confidence}}%),OCR：{{text}}（{{confidence}}%）
+result.sendConfigFailed,Config送信に失敗しました,Send Config Failed,Config发送失败
+result.sendingConfig,Config送信中：{{count}}フレーム,Sending Config: {{count}} Frames,正在发送Config：{{count}}帧
+result.receiveConfigFailed,Config受信に失敗しました：{{message}},Received Config Failed: {{message}},Config接收失败：{{message}}
+result.receivedConfigLoaded,受信したConfigを読み込みました,Received Config Loaded,已加载接收的Config
+result.zoomNotSupported,ズームに対応していません,Zoom Not Supported,不支持变焦
+overlay.ok,✓ OK,✓ OK,✓ OK
+overlay.duplicate,✕ 重複,✕ DUP,✕ 重复
+overlay.item,✕ 項目,✕ ITEM,✕ 项目
+overlay.camera,✕ カメラ,✕ CAMERA,✕ 相机
+overlay.qr,✕ QR,✕ QR,✕ QR
+overlay.ocr,✕ OCR,✕ OCR,✕ OCR
+overlay.format,✕ 形式,✕ FORMAT,✕ 格式
+overlay.configError,✕ CONFIG,✕ CONFIG,✕ CONFIG
+overlay.configSuccess,✓ CONFIG,✓ CONFIG,✓ CONFIG

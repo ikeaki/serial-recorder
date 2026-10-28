@@ -30,8 +30,43 @@
     "id": "ID"
   },
   "production": {
-    "load": "加载",
-    "export": "导出",
+    "load": "导入数据",
+    "export": "导出数据",
     "clear": "清除"
+  },
+  "result": {
+    "latestScan": "最新扫描",
+    "notScanned": "尚未扫描",
+    "configUrlNotFound": "未找到ConfigURL",
+    "configUrlLoaded": "ConfigURL已加载",
+    "configUrlLoadFailed": "ConfigURL加载失败",
+    "duplicate": "当前单元中存在重复数据",
+    "productionItemNotFound": "未找到Production项目",
+    "cameraNotReady": "相机尚未准备完成",
+    "scanTimeout": "扫描超时",
+    "qrScanFailed": "二维码扫描失败",
+    "ocrNotReady": "OCR尚未准备完成",
+    "canvasCreateFailed": "Canvas创建失败",
+    "ocrFailed": "OCR识别失败",
+    "ocrFailedWithConfidence": "OCR识别失败（{{confidence}}%）",
+    "formatError": "格式错误：{{text}}",
+    "invalidRegex": "正则表达式无效",
+    "ocrSuccess": "OCR：{{text}}（{{confidence}}%）",
+    "sendConfigFailed": "Config发送失败",
+    "sendingConfig": "正在发送Config：{{count}}帧",
+    "receiveConfigFailed": "Config接收失败：{{message}}",
+    "receivedConfigLoaded": "已加载接收的Config",
+    "zoomNotSupported": "不支持变焦"
+  },
+  "overlay": {
+    "ok": "✓ OK",
+    "duplicate": "✕ 重复",
+    "item": "✕ 项目",
+    "camera": "✕ 相机",
+    "qr": "✕ QR",
+    "ocr": "✕ OCR",
+    "format": "✕ 格式",
+    "configError": "✕ CONFIG",
+    "configSuccess": "✓ CONFIG"
   }
 }

@@ -33,5 +33,40 @@
     "load": "LOAD",
     "export": "EXPORT",
     "clear": "CLEAR"
+  },
+  "result": {
+    "latestScan": "Latest Scan",
+    "notScanned": "Not Scanned",
+    "configUrlNotFound": "ConfigURL Not Found",
+    "configUrlLoaded": "ConfigURL Loaded",
+    "configUrlLoadFailed": "ConfigURL Load Failed",
+    "duplicate": "Duplicate In Current Unit",
+    "productionItemNotFound": "Production Item Not Found",
+    "cameraNotReady": "Camera Not Ready",
+    "scanTimeout": "Scan Timeout",
+    "qrScanFailed": "QR Scan Failed",
+    "ocrNotReady": "OCR Not Ready",
+    "canvasCreateFailed": "Canvas Create Failed",
+    "ocrFailed": "OCR Failed",
+    "ocrFailedWithConfidence": "OCR Failed ({{confidence}}%)",
+    "formatError": "Format Error: {{text}}",
+    "invalidRegex": "Invalid Regex",
+    "ocrSuccess": "OCR: {{text}} ({{confidence}}%)",
+    "sendConfigFailed": "Send Config Failed",
+    "sendingConfig": "Sending Config: {{count}} Frames",
+    "receiveConfigFailed": "Received Config Failed: {{message}}",
+    "receivedConfigLoaded": "Received Config Loaded",
+    "zoomNotSupported": "Zoom Not Supported"
+  },
+  "overlay": {
+    "ok": "✓ OK",
+    "duplicate": "✕ DUP",
+    "item": "✕ ITEM",
+    "camera": "✕ CAMERA",
+    "qr": "✕ QR",
+    "ocr": "✕ OCR",
+    "format": "✕ FORMAT",
+    "configError": "✕ CONFIG",
+    "configSuccess": "✓ CONFIG"
   }
 }

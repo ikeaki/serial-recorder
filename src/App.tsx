@@ -77,6 +77,7 @@ const BUILD_DATE = __BUILD_DATE__;
 export default function App() {
 
   const {
+    t,
     i18n,
   } = useTranslation();
 
@@ -86,17 +87,20 @@ export default function App() {
     setLanguage,
   ] = useState<AppLanguage>(
     i18n.language === "en" ||
-    i18n.language === "zh-CN"
+      i18n.language === "zh-CN"
       ? i18n.language
       : "ja"
   );
-  
+
   const { playSuccess, playError, vibrateSuccess, vibrateError } = useFeedback();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [result, setResult] = useState("Not Scanned");
+  const [result, setResult] =
+    useState(() =>
+      t("result.notScanned")
+    );
 
   const [scanHeight, setScanHeight] = useState(30);
   const [scanWidth, setScanWidth] = useState(50);
@@ -120,16 +124,16 @@ export default function App() {
     startSendConfig,
 
     stopSendConfig:
-      stopSendConfigFromHook,
+    stopSendConfigFromHook,
 
     processReceiveFrame:
-      processReceiveFrameFromHook,
+    processReceiveFrameFromHook,
 
     startReceiveConfig:
-      startReceiveConfigFromHook,
+    startReceiveConfigFromHook,
 
     stopReceiveConfig:
-      stopReceiveConfigFromHook,
+    stopReceiveConfigFromHook,
   } = useConfigTransfer();
 
   const [results, setResults] = useState<Record<string, string>>({});
@@ -149,10 +153,10 @@ export default function App() {
     ocrReady,
     scanning,
     scanQr:
-      scanQrFromCamera,
+    scanQrFromCamera,
     ocrLoading,
     runOCR:
-      runOCRFromCamera,
+    runOCRFromCamera,
   } = useScanner({
     videoRef,
     scanWidth,
@@ -215,7 +219,7 @@ export default function App() {
         vibrateError();
 
         setResult(
-          "ConfigURL Not Found"
+          t("result.configUrlNotFound")
         );
 
         return;
@@ -225,7 +229,7 @@ export default function App() {
 
       if (!response.ok) {
         throw new Error(
-          "Download Failed"
+          t("result.configUrlLoadFailed")
         );
       }
 
@@ -238,7 +242,7 @@ export default function App() {
       vibrateSuccess();
 
       setResult(
-        "ConfigURL Loaded"
+        t("result.configUrlLoaded")
       );
 
     } catch (err) {
@@ -249,7 +253,7 @@ export default function App() {
       vibrateError();
 
       setResult(
-        "ConfigURL Load Failed"
+        t("result.configUrlLoadFailed")
       );
     }
   };
@@ -313,7 +317,7 @@ export default function App() {
       });
 
   }, []);
-  
+
   const clearProductionDB = async () => {
 
     // IndexedDBのProductionデータを削除
@@ -451,11 +455,11 @@ export default function App() {
         ).trim() !== ""
     ).length;
 
-    // Production入力対象項目の総数
-    const totalCount =
-      items.filter(
-        isProductionInputItem
-      ).length;
+  // Production入力対象項目の総数
+  const totalCount =
+    items.filter(
+      isProductionInputItem
+    ).length;
 
   const showOverlay = (
     message: string,
@@ -478,10 +482,10 @@ export default function App() {
       Object.values(results).includes(text)
     ) {
       setResult(
-        "⚠ Duplicate In Current Unit"
+        t("result.duplicate")
       );
       showOverlay(
-        "✕ DUP",
+        t("overlay.duplicate"),
         "#ff0000"
       );
       playError();
@@ -495,10 +499,10 @@ export default function App() {
 
     if (!currentItem) {
       setResult(
-        "Production Item Not Found"
+        t("result.productionItemNotFound")
       );
       showOverlay(
-        "✕ ITEM",
+        t("overlay.item"),
         "#ff0000"
       );
       playError();
@@ -526,7 +530,7 @@ export default function App() {
     );
 
     showOverlay(
-      "✓ OK",
+      t("overlay.ok"),
       "#00ff00"
     );
     playSuccess();
@@ -535,7 +539,7 @@ export default function App() {
     return true;
   };
 
-  
+
   useEffect(() => {
     async function startCamera() {
       try {
@@ -546,7 +550,7 @@ export default function App() {
             },
           },
         });
-    
+
         const track =
           stream.getVideoTracks()[0];
 
@@ -583,10 +587,10 @@ export default function App() {
           videoRef.current.srcObject = stream;
 
           await videoRef.current.play();
-           
+
           console.log(
-          "PLAY",
-          videoRef.current.currentTime
+            "PLAY",
+            videoRef.current.currentTime
           );
 
           videoRef.current.onloadedmetadata = () => {
@@ -611,10 +615,10 @@ export default function App() {
 
           };
         }
-        } catch (err) {
+      } catch (err) {
         //  alert("失敗: " + String(err));
         console.error(err);
-      
+
       }
     }
 
@@ -636,16 +640,16 @@ export default function App() {
 
         if (ctx) {
 
-        // カメラプレビューを描画
-        const drawHeight =
-          drawCameraFrame(
-            ctx,
-            canvas,
-            video,
-            isMobile,
-            cropTopRate,
-            cropBottomRate
-          );
+          // カメラプレビューを描画
+          const drawHeight =
+            drawCameraFrame(
+              ctx,
+              canvas,
+              video,
+              isMobile,
+              cropTopRate,
+              cropBottomRate
+            );
 
           // 現在のスキャン幅・高さで表示範囲を計算
           const {
@@ -677,7 +681,7 @@ export default function App() {
             cropY + cropH,
             canvas.width,
             canvas.height -
-              (cropY + cropH)
+            (cropY + cropH)
           );
 
           // スキャン枠
@@ -735,7 +739,7 @@ export default function App() {
             "H-",
             canvas.width / 2,
             cropY + cropH +
-              (canvas.height - cropY - cropH) / 2
+            (canvas.height - cropY - cropH) / 2
           );
 
           // 左（Width+）
@@ -749,7 +753,7 @@ export default function App() {
           ctx.fillText(
             "W-",
             cropX + cropW +
-              (canvas.width - cropX - cropW) / 2,
+            (canvas.width - cropX - cropW) / 2,
             cropY + cropH / 2
           );
 
@@ -765,7 +769,7 @@ export default function App() {
             "Z-",
             cropX / 2,
             cropY + cropH +
-              (canvas.height - cropY - cropH) / 2
+            (canvas.height - cropY - cropH) / 2
           );
 
           ctx.shadowBlur = 0;
@@ -784,9 +788,9 @@ export default function App() {
         animationId
       );
 
-}, [scanHeight, scanWidth, zoom]);
+  }, [scanHeight, scanWidth, zoom]);
 
-  
+
   // QR読取り結果を画面へ反映
   const scanQr = async () => {
     const scanResult =
@@ -797,11 +801,11 @@ export default function App() {
       "camera-not-ready"
     ) {
       setResult(
-        "Camera Not Ready"
+        t("result.cameraNotReady")
       );
 
       showOverlay(
-        "✕ CAMERA",
+        t("overlay.camera"),
         "#ff0000"
       );
 
@@ -816,11 +820,11 @@ export default function App() {
       "timeout"
     ) {
       setResult(
-        "Scan Timeout"
+        t("result.scanTimeout")
       );
 
       showOverlay(
-        "✕ QR",
+        t("overlay.qr"),
         "#ff0000"
       );
 
@@ -835,11 +839,11 @@ export default function App() {
       "failed"
     ) {
       setResult(
-        "QR Scan Failed"
+        t("result.qrScanFailed")
       );
 
       showOverlay(
-        "✕ QR",
+        t("overlay.qr"),
         "#ff0000"
       );
 
@@ -864,7 +868,7 @@ export default function App() {
       setResult(text);
 
       showOverlay(
-        "✓ OK",
+        t("overlay.ok"),
         "#00ff00"
       );
 
@@ -885,7 +889,7 @@ export default function App() {
 
     setResult(text);
   };
-  
+
   // OCR結果を画面とProductionへ反映
   const runOCR = async () => {
     const ocrResult =
@@ -896,11 +900,11 @@ export default function App() {
       "camera-not-ready"
     ) {
       setResult(
-        "Camera Not Ready"
+        t("result.cameraNotReady")
       );
 
       showOverlay(
-        "✕ CAMERA",
+        t("overlay.camera"),
         "#ff0000"
       );
 
@@ -915,11 +919,11 @@ export default function App() {
       "ocr-not-ready"
     ) {
       setResult(
-        "OCR Not Ready"
+        t("result.ocrNotReady")
       );
 
       showOverlay(
-        "✕ OCR",
+        t("overlay.ocr"),
         "#ff0000"
       );
 
@@ -934,11 +938,11 @@ export default function App() {
       "canvas-failed"
     ) {
       setResult(
-        "Canvas Create Failed"
+        t("result.canvasCreateFailed")
       );
 
       showOverlay(
-        "✕ OCR",
+        t("overlay.ocr"),
         "#ff0000"
       );
 
@@ -957,12 +961,17 @@ export default function App() {
         0;
 
       setResult(
-        `⚠ OCR Failed ` +
-        `(${confidence.toFixed(0)}%)`
+        t(
+          "result.ocrFailedWithConfidence",
+          {
+            confidence:
+              confidence.toFixed(0),
+          }
+        )
       );
 
       showOverlay(
-        "✕ OCR",
+        t("overlay.ocr"),
         "#ff0000"
       );
 
@@ -977,11 +986,11 @@ export default function App() {
       "failed"
     ) {
       setResult(
-        "⚠ OCR Failed"
+        t("result.ocrFailed")
       );
 
       showOverlay(
-        "✕ OCR",
+        t("overlay.ocr"),
         "#ff0000"
       );
 
@@ -1094,11 +1103,13 @@ export default function App() {
           ).test(text)
         ) {
           setResult(
-            `Format Error : ${text}`
+            t("result.formatError", {
+              text,
+            })
           );
 
           showOverlay(
-            "✕ FORMAT",
+            t("overlay.format"),
             "#ff0000"
           );
 
@@ -1115,11 +1126,11 @@ export default function App() {
         );
 
         setResult(
-          "Invalid Regex"
+          t("result.invalidRegex")
         );
 
         showOverlay(
-          "✕ FORMAT",
+          t("overlay.format"),
           "#ff0000"
         );
 
@@ -1135,11 +1146,11 @@ export default function App() {
       )
     ) {
       setResult(
-        "⚠ OCR Failed"
+        t("result.ocrFailed")
       );
 
       showOverlay(
-        "✕ OCR",
+        t("overlay.ocr"),
         "#ff0000"
       );
 
@@ -1153,7 +1164,7 @@ export default function App() {
       setResult(text);
 
       showOverlay(
-        "✓ OK",
+        t("overlay.ok"),
         "#00ff00"
       );
 
@@ -1173,8 +1184,11 @@ export default function App() {
     }
 
     setResult(
-      `OCR: ${text} ` +
-      `(${confidence.toFixed(0)}%)`
+      t("result.ocrSuccess", {
+        text,
+        confidence:
+          confidence.toFixed(0),
+      })
     );
   };
 
@@ -1192,7 +1206,7 @@ export default function App() {
         "failed"
       ) {
         setResult(
-          "Send Config Failed"
+          t("result.sendConfigFailed")
         );
 
         playError();
@@ -1204,8 +1218,10 @@ export default function App() {
       setTestSheetOpen(true);
 
       setResult(
-        `Sending Config: ` +
-        `${sendResult.frameCount} Frames`
+        t("result.sendingConfig", {
+          count:
+            sendResult.frameCount,
+        })
       );
     };
 
@@ -1236,9 +1252,9 @@ export default function App() {
 
       if (
         receiveResult.status ===
-          "ignored" ||
+        "ignored" ||
         receiveResult.status ===
-          "receiving"
+        "receiving"
       ) {
         return;
       }
@@ -1248,12 +1264,17 @@ export default function App() {
         "failed"
       ) {
         setResult(
-          `Received Config Failed: ` +
-          receiveResult.message
+          t(
+            "result.receiveConfigFailed",
+            {
+              message:
+                receiveResult.message,
+            }
+          )
         );
 
         showOverlay(
-          "✕ CONFIG",
+          t("overlay.configError"),
           "#ff0000"
         );
 
@@ -1272,11 +1293,11 @@ export default function App() {
 
       const {
         items:
-          restoredItems,
+        restoredItems,
         results:
-          restoredResults,
+        restoredResults,
         transferId:
-          receivedTransferId,
+        receivedTransferId,
         checksum,
       } =
         receiveResult.config;
@@ -1317,11 +1338,13 @@ export default function App() {
       });
 
       setResult(
-        "Received Config Loaded"
+        t(
+          "result.receivedConfigLoaded"
+        )
       );
 
       showOverlay(
-        "✓ CONFIG",
+        t("overlay.configSuccess"),
         "#00ff00"
       );
 
@@ -1370,7 +1393,10 @@ export default function App() {
         track.getCapabilities() as any;
 
       if (!capabilities.zoom) {
-        setResult("Zoom Not Supported");
+        setResult(
+          t("result.zoomNotSupported")
+        );
+
         return;
       }
 
@@ -1397,7 +1423,7 @@ export default function App() {
       console.error(err);
     }
   };
-    
+
 
   return (
     <div
@@ -1407,54 +1433,54 @@ export default function App() {
       }}
     >
 
-    <input
-      type="file"
-      accept=".xlsx"
-      ref={fileInputRef}
-      style={{ display: "none" }}
-      onChange={loadConfig}
-    />
+      <input
+        type="file"
+        accept=".xlsx"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={loadConfig}
+      />
 
 
-    {/* モード切替タブ */}
-    <ModeTabs
-      onProduction={() => {
-        document
-          .getElementById("debugFull")
-          ?.remove();
+      {/* モード切替タブ */}
+      <ModeTabs
+        onProduction={() => {
+          document
+            .getElementById("debugFull")
+            ?.remove();
 
-        document
-          .getElementById("debugCanvas")
-          ?.remove();
+          document
+            .getElementById("debugCanvas")
+            ?.remove();
 
-        setTab("prod");
-      }}
-      onTest={() => {
-        setTab("eval");
-        setSheetLevel(0);
-      }}
-    />
+          setTab("prod");
+        }}
+        onTest={() => {
+          setTab("eval");
+          setSheetLevel(0);
+        }}
+      />
 
-    {/* カメラプレビュー表示 */}
-    <CameraPreview
-      videoRef={videoRef}
-      previewCanvasRef={previewCanvasRef}
-      isMobile={isMobile}
-      overlayMessage={overlayMessage}
-      overlayColor={overlayColor}
-      results={results}
-      items={items}
-      currentIndex={currentIndex}
-      progressCount={progressCount}
-      totalCount={totalCount}
-      scanWidth={scanWidth}
-      scanHeight={scanHeight}
-      zoom={zoom}
-      changeZoom={changeZoom}
-      setScanWidth={setScanWidth}
-      setScanHeight={setScanHeight}
-      vibrateSuccess={vibrateSuccess}
-    />
+      {/* カメラプレビュー表示 */}
+      <CameraPreview
+        videoRef={videoRef}
+        previewCanvasRef={previewCanvasRef}
+        isMobile={isMobile}
+        overlayMessage={overlayMessage}
+        overlayColor={overlayColor}
+        results={results}
+        items={items}
+        currentIndex={currentIndex}
+        progressCount={progressCount}
+        totalCount={totalCount}
+        scanWidth={scanWidth}
+        scanHeight={scanHeight}
+        zoom={zoom}
+        changeZoom={changeZoom}
+        setScanWidth={setScanWidth}
+        setScanHeight={setScanHeight}
+        vibrateSuccess={vibrateSuccess}
+      />
 
 
       <div
@@ -1467,270 +1493,272 @@ export default function App() {
       >
         Build: {BUILD_DATE} JST
       </div>
- 
-    {/* QR・バーコード／OCR読取ボタン */}
-    <ScanButtons
-      scanning={scanning}
-      ocrLoading={ocrLoading}
-      ocrReady={ocrReady}
-      onScanQr={scanQr}
-      onRunOCR={runOCR}
-    />
 
-    {tab === "eval" && (
-    <>
-      <br />
-      <h2>Latest Scan</h2>
-      <div
-        style={{
-          border: "1px solid #ccc",
-          padding: "15px",
-          marginBottom: "20px",
-          fontSize: "20px",
-        }}
-      >
-        {result}
-      </div>
-    </>
-    )}
+      {/* QR・バーコード／OCR読取ボタン */}
+      <ScanButtons
+        scanning={scanning}
+        ocrLoading={ocrLoading}
+        ocrReady={ocrReady}
+        onScanQr={scanQr}
+        onRunOCR={runOCR}
+      />
 
-    {tab === "eval" && (
-      <>
-        {/* TESTモードのConfig送受信シート */}
-        <TestConfigSheet
-          configMode={configMode}
-          testSheetOpen={testSheetOpen}
-          qrImage={qrImage}
-          currentFrame={currentFrame}
-          sendFrameCount={sendFrames.length}
-          transferId={transferId}
-          receivedCount={receivedCount}
-          receiveTotal={receiveTotal}
-          receiveStatus={receiveStatus}
+      {tab === "eval" && (
+        <>
+          <br />
+          <h2>
+            {t("result.latestScan")}
+          </h2>
+          <div
+            style={{
+              border: "1px solid #ccc",
+              padding: "15px",
+              marginBottom: "20px",
+              fontSize: "20px",
+            }}
+          >
+            {result}
+          </div>
+        </>
+      )}
 
-          language={language}
-          onLanguageChange={changeLanguage}
+      {tab === "eval" && (
+        <>
+          {/* TESTモードのConfig送受信シート */}
+          <TestConfigSheet
+            configMode={configMode}
+            testSheetOpen={testSheetOpen}
+            qrImage={qrImage}
+            currentFrame={currentFrame}
+            sendFrameCount={sendFrames.length}
+            transferId={transferId}
+            receivedCount={receivedCount}
+            receiveTotal={receiveTotal}
+            receiveStatus={receiveStatus}
+
+            language={language}
+            onLanguageChange={changeLanguage}
+
+            onToggleSheet={() => {
+              // TESTシートの開閉を切り替える
+              setTestSheetOpen((prev) => !prev);
+            }}
+            onSendConfig={sendConfig}
+            onReceiveConfig={startReceiveConfig}
+            onStopSend={stopSendConfig}
+            onStopReceive={stopReceiveConfig}
+          />
+        </>
+      )}
+
+
+      {tab === "prod" && (
+        <>
+          <div style={{ height: "10px" }} />
+
+
+          <div
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              padding: "10px",
+            }}
+          >
+
+            {/* Productionの前・現在・次項目 */}
+            <ProductionCurrentItem
+              items={items}
+              results={results}
+              currentIndex={currentIndex}
+
+              onPrevious={async () => {
+                // 現在の入力内容を保存
+                await saveCurrentProduction();
+
+                // 1つ前の項目へ移動
+                setCurrentIndex((prev) =>
+                  Math.max(0, prev - 1)
+                );
+
+                vibrateSuccess();
+              }}
+
+              onValueChange={(value) => {
+                const itemName =
+                  items[currentIndex]?.name;
+
+                if (!itemName) return;
+
+                // 現在項目の入力結果を更新
+                setResults({
+                  ...results,
+                  [itemName]: value,
+                });
+              }}
+
+              onValueEnter={async (value) => {
+                const itemName =
+                  items[currentIndex]?.name;
+
+                if (!itemName) return;
+
+                const newResults = {
+                  ...results,
+                  [itemName]: value,
+                };
+
+                // 入力結果を更新して保存
+                setResults(newResults);
+
+                await saveCurrentProduction(
+                  newResults
+                );
+
+                // 次の項目へ移動
+                setCurrentIndex((prev) =>
+                  Math.min(
+                    items.length - 1,
+                    prev + 1
+                  )
+                );
+
+                playSuccess();
+                vibrateSuccess();
+              }}
+
+              onNext={async () => {
+                // 現在の入力内容を保存
+                await saveCurrentProduction();
+
+                // 1つ次の項目へ移動
+                setCurrentIndex((prev) =>
+                  Math.min(
+                    items.length - 1,
+                    prev + 1
+                  )
+                );
+
+                vibrateSuccess();
+              }}
+            />
+          </div>
+
+
+        </>
+      )}
+
+      {/* Production下部シート */}
+      {tab === "prod" && (
+        <ProductionSheet
+          sheetLevel={sheetLevel}
+          items={items}
+          results={results}
+          currentIndex={currentIndex}
 
           onToggleSheet={() => {
-            // TESTシートの開閉を切り替える
-            setTestSheetOpen((prev) => !prev);
+            // 0 → 1 → 2 → 0の順にシート位置を変更
+            setSheetLevel((prev) =>
+              prev >= 2 ? 0 : prev + 1
+            );
           }}
-          onSendConfig={sendConfig}
-          onReceiveConfig={startReceiveConfig}
-          onStopSend={stopSendConfig}
-          onStopReceive={stopReceiveConfig}
-        />
-      </>
-    )}
 
+          onLoad={() => {
+            // 通常クリックでConfigファイルを選択
+            fileInputRef.current?.click();
+          }}
 
-    {tab === "prod" && (
-    <>
-      <div style={{ height: "10px" }} />
+          onLoadPointerDown={() => {
+            // 1.5秒長押しでOneDriveから読み込む
+            pressTimer.current =
+              window.setTimeout(async () => {
+                await loadFromOneDrive();
+              }, 1500);
+          }}
 
+          onPointerEnd={() => {
+            // 各ボタン・項目の長押し判定を解除
+            if (pressTimer.current) {
+              clearTimeout(pressTimer.current);
+            }
+          }}
 
-      <div
-        style={{
-          border: "1px solid #ccc",
-          borderRadius: "8px",
-          padding: "10px",
-        }}
-      >
+          onExportClick={() => {
+            // 長押し後に発生するクリックは処理しない
+            if (
+              exportLongPressTriggered.current
+            ) {
+              exportLongPressTriggered.current =
+                false;
 
-      {/* Productionの前・現在・次項目 */}
-      <ProductionCurrentItem
-        items={items}
-        results={results}
-        currentIndex={currentIndex}
+              return;
+            }
 
-        onPrevious={async () => {
-          // 現在の入力内容を保存
-          await saveCurrentProduction();
+            const now = Date.now();
 
-          // 1つ前の項目へ移動
-          setCurrentIndex((prev) =>
-            Math.max(0, prev - 1)
-          );
+            // 400ms以内のダブルクリックでQR付きExcel出力
+            if (
+              now -
+              lastExportClick.current <
+              400
+            ) {
+              exportProductionExcelWithQr();
 
-          vibrateSuccess();
-        }}
+              lastExportClick.current = 0;
 
-        onValueChange={(value) => {
-          const itemName =
-            items[currentIndex]?.name;
+              return;
+            }
 
-          if (!itemName) return;
+            lastExportClick.current = now;
 
-          // 現在項目の入力結果を更新
-          setResults({
-            ...results,
-            [itemName]: value,
-          });
-        }}
+            // シングルクリックで通常Excel出力
+            setTimeout(() => {
+              if (
+                lastExportClick.current ===
+                now
+              ) {
+                exportProductionExcel();
+              }
+            }, 400);
+          }}
 
-        onValueEnter={async (value) => {
-          const itemName =
-            items[currentIndex]?.name;
-
-          if (!itemName) return;
-
-          const newResults = {
-            ...results,
-            [itemName]: value,
-          };
-
-          // 入力結果を更新して保存
-          setResults(newResults);
-
-          await saveCurrentProduction(
-            newResults
-          );
-
-          // 次の項目へ移動
-          setCurrentIndex((prev) =>
-            Math.min(
-              items.length - 1,
-              prev + 1
-            )
-          );
-
-          playSuccess();
-          vibrateSuccess();
-        }}
-
-        onNext={async () => {
-          // 現在の入力内容を保存
-          await saveCurrentProduction();
-
-          // 1つ次の項目へ移動
-          setCurrentIndex((prev) =>
-            Math.min(
-              items.length - 1,
-              prev + 1
-            )
-          );
-
-          vibrateSuccess();
-        }}
-      />
-    </div>
-
-
-    </>
-    )}
-
-    {/* Production下部シート */}
-    {tab === "prod" && (
-      <ProductionSheet
-        sheetLevel={sheetLevel}
-        items={items}
-        results={results}
-        currentIndex={currentIndex}
-
-        onToggleSheet={() => {
-          // 0 → 1 → 2 → 0の順にシート位置を変更
-          setSheetLevel((prev) =>
-            prev >= 2 ? 0 : prev + 1
-          );
-        }}
-
-        onLoad={() => {
-          // 通常クリックでConfigファイルを選択
-          fileInputRef.current?.click();
-        }}
-
-        onLoadPointerDown={() => {
-          // 1.5秒長押しでOneDriveから読み込む
-          pressTimer.current =
-            window.setTimeout(async () => {
-              await loadFromOneDrive();
-            }, 1500);
-        }}
-
-        onPointerEnd={() => {
-          // 各ボタン・項目の長押し判定を解除
-          if (pressTimer.current) {
-            clearTimeout(pressTimer.current);
-          }
-        }}
-
-        onExportClick={() => {
-          // 長押し後に発生するクリックは処理しない
-          if (
-            exportLongPressTriggered.current
-          ) {
+          onExportPointerDown={() => {
             exportLongPressTriggered.current =
               false;
 
-            return;
-          }
+            // 1.5秒長押しでCSV出力
+            pressTimer.current =
+              window.setTimeout(() => {
+                exportLongPressTriggered.current =
+                  true;
 
-          const now = Date.now();
+                exportProductionCsv();
+              }, 1500);
+          }}
 
-          // 400ms以内のダブルクリックでQR付きExcel出力
-          if (
-            now -
-              lastExportClick.current <
-            400
-          ) {
-            exportProductionExcelWithQr();
+          onClearPointerDown={() => {
+            // 1.5秒長押しでProduction DBを消去
+            pressTimer.current =
+              window.setTimeout(async () => {
+                await clearProductionDB();
+              }, 1500);
+          }}
 
-            lastExportClick.current = 0;
+          onItemPointerDown={(index) => {
+            // 1.5秒長押しで対象項目を選択
+            pressTimer.current =
+              window.setTimeout(() => {
+                setCurrentIndex(index);
+                setSheetLevel(0);
 
-            return;
-          }
-
-          lastExportClick.current = now;
-
-          // シングルクリックで通常Excel出力
-          setTimeout(() => {
-            if (
-              lastExportClick.current ===
-              now
-            ) {
-              exportProductionExcel();
-            }
-          }, 400);
-        }}
-
-        onExportPointerDown={() => {
-          exportLongPressTriggered.current =
-            false;
-
-          // 1.5秒長押しでCSV出力
-          pressTimer.current =
-            window.setTimeout(() => {
-              exportLongPressTriggered.current =
-                true;
-
-              exportProductionCsv();
-            }, 1500);
-        }}
-
-        onClearPointerDown={() => {
-          // 1.5秒長押しでProduction DBを消去
-          pressTimer.current =
-            window.setTimeout(async () => {
-              await clearProductionDB();
-            }, 1500);
-        }}
-
-        onItemPointerDown={(index) => {
-          // 1.5秒長押しで対象項目を選択
-          pressTimer.current =
-            window.setTimeout(() => {
-              setCurrentIndex(index);
-              setSheetLevel(0);
-
-              playSuccess();
-              vibrateSuccess();
-            }, 1500);
-        }}
-      />
-    )}
+                playSuccess();
+                vibrateSuccess();
+              }, 1500);
+          }}
+        />
+      )}
 
 
-    </div>    
+    </div>
 
   );
 }
