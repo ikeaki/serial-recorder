@@ -61,6 +61,9 @@ export function ProductionProgress({
           alignItems: "center",
           columnGap: "6px",
 
+          // 行間を一定にする
+          lineHeight: "12px",
+
           overflow: "hidden",
           whiteSpace: "nowrap",
         }}
@@ -106,7 +109,9 @@ export function ProductionProgress({
             "auto 6px minmax(0, 1fr) 6px auto 6px auto",
           columnGap: "6px",
 
-          marginTop: "2px",
+          // 1行目との間隔を詰める
+          marginTop: "-2px",
+          lineHeight: "12px",
 
           overflow: "hidden",
           whiteSpace: "nowrap",
