@@ -1,14 +1,6 @@
 key,ja,en,zh-CN
-mode.production,生産モード,PRODUCTION MODE,生产模式
-mode.test,テストモード,TEST MODE,测试模式
-scan.qr,QR／バーコード読取,Scan QR/Barcode,扫描二维码/条形码
-scan.ocr,OCR読取,Scan OCR,扫描OCR
-common.scanning,読取中...,Scanning...,扫描中...
-common.stop,停止,STOP,停止
-common.load,読込,LOAD,加载
-common.export,出力,EXPORT,导出
-common.clear,消去,CLEAR,清除
+app.name,Serial Recorder,Serial Recorder,Serial Recorder
 language.title,言語,Language,语言
 language.japanese,日本語,Japanese,日本语
 language.english,英語,English,英语
-language.chinese,簡体字中国語,Simplified Chinese,简体中文
+language.chineseSimplified,簡体字中国語,Simplified Chinese,简体中文

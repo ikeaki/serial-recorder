@@ -3,7 +3,8 @@
     "name": "Serial Recorder"
   },
   "language": {
-    "japanese": "日语",
+    "title": "语言",
+    "japanese": "日本语",
     "english": "英语",
     "chineseSimplified": "简体中文"
   }
