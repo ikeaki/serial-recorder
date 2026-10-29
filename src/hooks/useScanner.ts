@@ -36,41 +36,91 @@ type UseScannerOptions = {
   cropBottomRate: number;
 };
 
+// QR／OCR共通の確認画像情報
+export type ScanDebugImage = {
+  // カメラ全体画像
+  sourceCanvas: HTMLCanvasElement;
+
+  // 実際に読取りへ使用した切り出し画像
+  cropCanvas: HTMLCanvasElement;
+
+  // カメラ全体画像内の切り出し位置
+  cropX: number;
+  cropY: number;
+  cropW: number;
+  cropH: number;
+};
+
 export type QrScanResult =
   | {
+    // QR／バーコード読取り成功
     status: "success";
+
+    // 読み取った文字列
     text: string;
+
+    // 読取りに使用した確認画像
+    debugImage: ScanDebugImage;
   }
   | {
-    status:
-    | "camera-not-ready"
-    | "timeout"
-    | "failed";
+    // 読取り時間切れ
+    status: "timeout";
+
+    // 最後に読取りを試した確認画像
+    debugImage?: ScanDebugImage;
+  }
+  | {
+    // QR／バーコード読取り失敗
+    status: "failed";
+
+    // 画像取得後の失敗なら確認画像を保持
+    debugImage?: ScanDebugImage;
+  }
+  | {
+    // カメラ映像を取得できないため画像なし
+    status: "camera-not-ready";
   };
 
 export type OcrScanResult =
   | {
+    // OCR読取り成功
     status: "success";
+
+    // 読み取った文字列
     text: string;
+
+    // OCR信頼度
     confidence: number;
-    sourceCanvas:
-    HTMLCanvasElement;
-    cropCanvas:
-    HTMLCanvasElement;
-    cropX: number;
-    cropY: number;
-    cropW: number;
-    cropH: number;
+
+    // OCRに使用した確認画像
+    debugImage: ScanDebugImage;
   }
   | {
+    // OCR低信頼度
+    status: "low-confidence";
+
+    // 取得できた最高信頼度
+    confidence: number;
+
+    // OCRに使用した確認画像
+    debugImage: ScanDebugImage;
+  }
+  | {
+    // OCR処理中の失敗
+    status: "failed";
+
+    // 取得できている場合のみ返す
+    confidence?: number;
+
+    // Canvas作成後の失敗なら返す
+    debugImage?: ScanDebugImage;
+  }
+  | {
+    // 確認画像を取得できない状態
     status:
     | "camera-not-ready"
     | "ocr-not-ready"
-    | "canvas-failed"
-    | "low-confidence"
-    | "failed";
-
-    confidence?: number;
+    | "canvas-failed";
   };
 
 
@@ -222,6 +272,12 @@ export const useScanner = ({
       const startTime =
         performance.now();
 
+      // タイムアウト・失敗時にも返せるよう、
+      // 最後に取得した確認画像を保持
+      let lastDebugImage:
+        | ScanDebugImage
+        | undefined;
+
       try {
         while (
           performance.now() -
@@ -245,8 +301,29 @@ export const useScanner = ({
             );
           }
 
-          const { cropCanvas } =
-            captured;
+          const {
+            sourceCanvas,
+            cropCanvas,
+            cropX,
+            cropY,
+            cropW,
+            cropH,
+          } = captured;
+
+          // 今回のQR／バーコード読取りに使用する確認画像
+          const debugImage:
+            ScanDebugImage = {
+            sourceCanvas,
+            cropCanvas,
+            cropX,
+            cropY,
+            cropW,
+            cropH,
+          };
+
+          // 読取りに失敗しても最後の画像を返せるよう保持
+          lastDebugImage =
+            debugImage;
 
           const image =
             cropCanvas.toDataURL(
@@ -292,6 +369,9 @@ export const useScanner = ({
               return {
                 status: "success",
                 text,
+
+                // 成功時に使用した確認画像
+                debugImage,
               };
             }
           } catch {
@@ -310,6 +390,10 @@ export const useScanner = ({
 
         return {
           status: "timeout",
+
+          // 最後に読取りを試した画像
+          debugImage:
+            lastDebugImage,
         };
       } catch (error) {
         console.error(
@@ -319,6 +403,10 @@ export const useScanner = ({
 
         return {
           status: "failed",
+
+          // Canvas取得後の失敗なら確認画像を返す
+          debugImage:
+            lastDebugImage,
         };
       } finally {
         scanningRef.current =
@@ -363,6 +451,12 @@ export const useScanner = ({
 
       setOcrLoading(true);
 
+      // OCR処理中の例外でも返せるよう、
+      // 取得済みの確認画像を保持
+      let lastDebugImage:
+        | ScanDebugImage
+        | undefined;
+
       try {
         // OCR用Canvasを4倍で切り出す
         const captured =
@@ -391,6 +485,21 @@ export const useScanner = ({
           cropW,
           cropH,
         } = captured;
+
+        // 今回のOCRに使用する確認画像
+        const debugImage:
+          ScanDebugImage = {
+          sourceCanvas,
+          cropCanvas,
+          cropX,
+          cropY,
+          cropW,
+          cropH,
+        };
+
+        // OCR途中の例外でも返せるよう保持
+        lastDebugImage =
+          debugImage;
 
         const thresholds = [
           120,
@@ -520,20 +629,23 @@ export const useScanner = ({
               "low-confidence",
             confidence:
               bestConfidence,
+
+            // 低信頼度でも確認画像を返す
+            debugImage,
           };
         }
 
         return {
           status: "success",
-          text: bestText,
+
+          text:
+            bestText,
+
           confidence:
             bestConfidence,
-          sourceCanvas,
-          cropCanvas,
-          cropX,
-          cropY,
-          cropW,
-          cropH,
+
+          // OCRに使用した確認画像
+          debugImage,
         };
       } catch (error) {
         console.error(
@@ -543,6 +655,10 @@ export const useScanner = ({
 
         return {
           status: "failed",
+
+          // Canvas取得後の失敗なら確認画像を返す
+          debugImage:
+            lastDebugImage,
         };
       } finally {
         // OCR実行状態を必ず解除

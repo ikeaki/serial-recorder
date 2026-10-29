@@ -52,6 +52,7 @@ import {
 // OCR Scanner管理
 import {
   useScanner,
+  type ScanDebugImage,
 } from "./hooks/useScanner";
 
 // Components
@@ -175,6 +176,18 @@ export default function App() {
   const [overlayMessage, setOverlayMessage] = useState("");
 
   const [overlayColor, setOverlayColor] = useState("#00ff00");
+
+  // 最後に実行したQR／OCRのカメラ全体画像
+  const [
+    debugFullImage,
+    setDebugFullImage,
+  ] = useState("");
+
+  // 最後に実行したQR／OCRの切り出し画像
+  const [
+    debugCropImage,
+    setDebugCropImage,
+  ] = useState("");
 
   // 表示言語を変更し、次回起動用に保存
   const changeLanguage = async (
@@ -474,6 +487,82 @@ export default function App() {
       setOverlayMessage("");
     }, 1500);
 
+  };
+
+  // QR／OCRで使用した最新の確認画像をStateへ保存
+  const saveScanDebugImages = (
+    debugImage?: ScanDebugImage
+  ): void => {
+    // カメラ未準備などで画像がない場合は更新しない
+    if (!debugImage) {
+      return;
+    }
+
+    const {
+      sourceCanvas,
+      cropCanvas,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+    } = debugImage;
+
+    // 元のCanvasへ直接赤枠を描かないよう、
+    // 表示用Canvasを新しく作成する
+    const fullCanvas =
+      document.createElement(
+        "canvas"
+      );
+
+    fullCanvas.width =
+      sourceCanvas.width;
+
+    fullCanvas.height =
+      sourceCanvas.height;
+
+    const fullContext =
+      fullCanvas.getContext(
+        "2d"
+      );
+
+    // 2D Contextを取得できない場合は更新しない
+    if (!fullContext) {
+      return;
+    }
+
+    // カメラ全体画像を表示用Canvasへコピー
+    fullContext.drawImage(
+      sourceCanvas,
+      0,
+      0
+    );
+
+    // 実際に読み取りへ使用した範囲を赤枠で表示
+    fullContext.strokeStyle =
+      "red";
+
+    fullContext.lineWidth = 5;
+
+    fullContext.strokeRect(
+      cropX,
+      cropY,
+      cropW,
+      cropH
+    );
+
+    // 青枠表示用のカメラ全体画像を保存
+    setDebugFullImage(
+      fullCanvas.toDataURL(
+        "image/png"
+      )
+    );
+
+    // 赤枠表示用の切り出し画像を保存
+    setDebugCropImage(
+      cropCanvas.toDataURL(
+        "image/png"
+      )
+    );
   };
 
   const applyProductionScan = async (
@@ -797,6 +886,16 @@ export default function App() {
     const scanResult =
       await scanQrFromCamera();
 
+    // 成功・タイムアウト・失敗にかかわらず、
+    // 取得できた最新の確認画像を保持する
+    if (
+      "debugImage" in scanResult
+    ) {
+      saveScanDebugImages(
+        scanResult.debugImage
+      );
+    }
+
     if (
       scanResult.status ===
       "camera-not-ready"
@@ -895,6 +994,17 @@ export default function App() {
   const runOCR = async () => {
     const ocrResult =
       await runOCRFromCamera();
+
+    // 成功・低信頼度・失敗にかかわらず、
+    // 取得できた最新の確認画像を保持する
+    if (
+      "debugImage" in ocrResult
+    ) {
+      saveScanDebugImages(
+        ocrResult.debugImage
+      );
+    }
+
 
     if (
       ocrResult.status ===
@@ -1012,85 +1122,8 @@ export default function App() {
     const {
       text,
       confidence,
-      sourceCanvas,
-      cropCanvas,
-      cropX,
-      cropY,
-      cropW,
-      cropH,
     } = ocrResult;
 
-    // TEST MODE用の切り出し範囲表示
-    const sourceCtx =
-      sourceCanvas.getContext(
-        "2d"
-      );
-
-    if (sourceCtx) {
-      sourceCtx.strokeStyle =
-        "red";
-
-      sourceCtx.lineWidth = 5;
-
-      sourceCtx.strokeRect(
-        cropX,
-        cropY,
-        cropW,
-        cropH
-      );
-    }
-
-    sourceCanvas.style.width =
-      "100%";
-
-    sourceCanvas.style.maxWidth =
-      "450px";
-
-    sourceCanvas.style.border =
-      "2px solid blue";
-
-    document
-      .getElementById(
-        "debugFull"
-      )
-      ?.remove();
-
-    sourceCanvas.id =
-      "debugFull";
-
-    cropCanvas.style.height =
-      "auto";
-
-    cropCanvas.style.objectFit =
-      "contain";
-
-    cropCanvas.style.width =
-      "100%";
-
-    cropCanvas.style.maxWidth =
-      "450px";
-
-    cropCanvas.style.border =
-      "2px solid red";
-
-    document
-      .getElementById(
-        "debugCanvas"
-      )
-      ?.remove();
-
-    cropCanvas.id =
-      "debugCanvas";
-
-    if (tab === "eval") {
-      document.body.appendChild(
-        sourceCanvas
-      );
-
-      document.body.appendChild(
-        cropCanvas
-      );
-    }
 
     const regex =
       items[currentIndex]
@@ -1442,22 +1475,17 @@ export default function App() {
         onChange={loadConfig}
       />
 
-
       {/* モード切替タブ */}
       <ModeTabs
         onProduction={() => {
-          document
-            .getElementById("debugFull")
-            ?.remove();
-
-          document
-            .getElementById("debugCanvas")
-            ?.remove();
-
+          // PRODUCTION MODEへ切り替える
           setTab("prod");
         }}
         onTest={() => {
+          // TEST MODEへ切り替える
           setTab("eval");
+
+          // Productionシートを閉じる
           setSheetLevel(0);
         }}
       />
@@ -1538,7 +1566,40 @@ export default function App() {
               OCR Init Error: {ocrInitError}
             </div>
           )}
+          {/* 最新スキャンのカメラ全体画像 */}
+          {debugFullImage && (
+            <img
+              src={debugFullImage}
+              alt="Scan full"
+              style={{
+                display: "block",
+                width: "100%",
+                height: "auto",
+                maxWidth: "450px",
+                margin: "10px auto 0",
+                border: "2px solid blue",
+                boxSizing: "border-box",
+              }}
+            />
+          )}
 
+          {/* 最新スキャンの切り出し画像 */}
+          {debugCropImage && (
+            <img
+              src={debugCropImage}
+              alt="Scan crop"
+              style={{
+                display: "block",
+                width: "100%",
+                height: "auto",
+                maxWidth: "450px",
+                margin: "10px auto 20px",
+                border: "2px solid red",
+                boxSizing: "border-box",
+                objectFit: "contain",
+              }}
+            />
+          )}
 
         </>
       )}
