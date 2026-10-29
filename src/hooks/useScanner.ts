@@ -122,7 +122,18 @@ export const useScanner = ({
 
           const worker =
             await createWorker(
-              "eng"
+              "eng",
+              1,
+              {
+                workerPath:
+                  "/tesseract/worker.min.js",
+
+                corePath:
+                  "/tesseract/core",
+
+                langPath:
+                  "/tesseract/lang",
+              }
             );
 
           if (cancelled) {
