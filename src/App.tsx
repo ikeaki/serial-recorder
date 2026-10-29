@@ -151,6 +151,7 @@ export default function App() {
 
   const {
     ocrReady,
+    ocrInitError,
     scanning,
     scanQr:
     scanQrFromCamera,
@@ -1519,6 +1520,26 @@ export default function App() {
           >
             {result}
           </div>
+          {/* OCR初期化エラーの調査用表示 */}
+          {ocrInitError && (
+            <div
+              style={{
+                marginBottom: "12px",
+                padding: "10px",
+                border: "2px solid red",
+                borderRadius: "8px",
+                color: "#b91c1c",
+                background: "#fef2f2",
+                overflowWrap: "anywhere",
+                fontSize: "13px",
+                textAlign: "left",
+              }}
+            >
+              OCR Init Error: {ocrInitError}
+            </div>
+          )}
+
+
         </>
       )}
 
