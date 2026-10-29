@@ -180,6 +180,18 @@ export default function App() {
 
   const [overlayColor, setOverlayColor] = useState("#00ff00");
 
+  // 最後にスキャンしたカメラ全体画像
+  const [
+    debugFullImage,
+    setDebugFullImage,
+  ] = useState("");
+
+  // 最後にスキャンした切り出し画像
+  const [
+    debugCropImage,
+    setDebugCropImage,
+  ] = useState("");
+
   // 表示言語を変更し、次回起動用に保存
   const changeLanguage = async (
     nextLanguage: AppLanguage
@@ -795,30 +807,10 @@ export default function App() {
 
   }, [scanHeight, scanWidth, zoom]);
 
-  // 前回のQR／OCR確認画像を削除
-  const clearScanDebugImages =
-    (): void => {
-      document
-        .getElementById(
-          "debugFull"
-        )
-        ?.remove();
-
-      document
-        .getElementById(
-          "debugCanvas"
-        )
-        ?.remove();
-    };
-
-  // QR／OCRで使用した画像を画面下部へ表示
-  const showScanDebugImages = (
+  // QR／OCRで使用した最新画像を保存
+  const saveScanDebugImages = (
     debugImage?: ScanDebugImage
   ): void => {
-    // 新しい画像表示前に前回画像を削除
-    clearScanDebugImages();
-
-    // Canvasを取得できなかった場合は表示しない
     if (!debugImage) {
       return;
     }
@@ -832,97 +824,65 @@ export default function App() {
       cropH,
     } = debugImage;
 
-    // カメラ全体画像へ読取り範囲を描画
-    const sourceCtx =
-      sourceCanvas.getContext(
-        "2d"
+    // 元Canvasを書き換えないよう複製
+    const fullCanvas =
+      document.createElement(
+        "canvas"
       );
 
-    if (sourceCtx) {
-      sourceCtx.strokeStyle =
-        "red";
+    fullCanvas.width =
+      sourceCanvas.width;
 
-      sourceCtx.lineWidth = 5;
+    fullCanvas.height =
+      sourceCanvas.height;
 
-      sourceCtx.strokeRect(
-        cropX,
-        cropY,
-        cropW,
-        cropH
-      );
+    const fullContext =
+      fullCanvas.getContext("2d");
+
+    if (!fullContext) {
+      return;
     }
 
-    // カメラ全体画像
-    sourceCanvas.style.width =
-      "100%";
-
-    sourceCanvas.style.height =
-      "auto";
-
-    sourceCanvas.style.maxWidth =
-      "450px";
-
-    sourceCanvas.style.display =
-      "block";
-
-    sourceCanvas.style.margin =
-      "10px auto 0";
-
-    sourceCanvas.style.border =
-      "2px solid blue";
-
-    sourceCanvas.id =
-      "debugFull";
-
-    // 実際に読取りへ使用した切り出し画像
-    cropCanvas.style.width =
-      "100%";
-
-    cropCanvas.style.height =
-      "auto";
-
-    cropCanvas.style.maxWidth =
-      "450px";
-
-    cropCanvas.style.objectFit =
-      "contain";
-
-    cropCanvas.style.display =
-      "block";
-
-    cropCanvas.style.margin =
-      "10px auto 0";
-
-    cropCanvas.style.border =
-      "2px solid red";
-
-    cropCanvas.id =
-      "debugCanvas";
-
-    // TEST／PRODUCTIONの両モードで表示
-    document.body.appendChild(
-      sourceCanvas
+    fullContext.drawImage(
+      sourceCanvas,
+      0,
+      0
     );
 
-    document.body.appendChild(
-      cropCanvas
+    // 読取範囲を赤枠で表示
+    fullContext.strokeStyle = "red";
+    fullContext.lineWidth = 5;
+
+    fullContext.strokeRect(
+      cropX,
+      cropY,
+      cropW,
+      cropH
+    );
+
+    // 表示用画像としてstateへ保存
+    setDebugFullImage(
+      fullCanvas.toDataURL(
+        "image/png"
+      )
+    );
+
+    setDebugCropImage(
+      cropCanvas.toDataURL(
+        "image/png"
+      )
     );
   };
 
   // QR読取り結果を画面へ反映
   const scanQr = async () => {
-    // スキャン開始時に前回画像を削除
-    clearScanDebugImages();
-
     const scanResult =
       await scanQrFromCamera();
 
-    // 成功・失敗判定より前に確認画像を表示
     if (
-      "debugImage" in
-      scanResult
+      "debugImage" in scanResult
     ) {
-      showScanDebugImages(
+      saveScanDebugImages(
         scanResult.debugImage
       );
     }
@@ -1023,18 +983,14 @@ export default function App() {
 
   // OCR結果を画面とProductionへ反映
   const runOCR = async () => {
-    // OCR開始時に前回画像を削除
-    clearScanDebugImages();
 
     const ocrResult =
       await runOCRFromCamera();
 
-    // 成功・失敗判定より前に確認画像を表示
     if (
-      "debugImage" in
-      ocrResult
+      "debugImage" in ocrResult
     ) {
-      showScanDebugImages(
+      saveScanDebugImages(
         ocrResult.debugImage
       );
     }
@@ -1511,14 +1467,6 @@ export default function App() {
       {/* モード切替タブ */}
       <ModeTabs
         onProduction={() => {
-          document
-            .getElementById("debugFull")
-            ?.remove();
-
-          document
-            .getElementById("debugCanvas")
-            ?.remove();
-
           setTab("prod");
         }}
         onTest={() => {
@@ -1572,9 +1520,11 @@ export default function App() {
       {tab === "eval" && (
         <>
           <br />
+
           <h2>
             {t("result.latestScan")}
           </h2>
+
           <div
             style={{
               border: "1px solid #ccc",
@@ -1585,6 +1535,39 @@ export default function App() {
           >
             {result}
           </div>
+
+          {/* カメラ全体画像と読取範囲 */}
+          {debugFullImage && (
+            <img
+              src={debugFullImage}
+              alt="Scan full preview"
+              style={{
+                display: "block",
+                width: "100%",
+                maxWidth: "450px",
+                height: "auto",
+                margin: "10px auto 0",
+                border: "2px solid blue",
+              }}
+            />
+          )}
+
+          {/* 実際にQR／OCRへ渡した切り出し画像 */}
+          {debugCropImage && (
+            <img
+              src={debugCropImage}
+              alt="Scan crop preview"
+              style={{
+                display: "block",
+                width: "100%",
+                maxWidth: "450px",
+                height: "auto",
+                objectFit: "contain",
+                margin: "10px auto 0",
+                border: "2px solid red",
+              }}
+            />
+          )}
         </>
       )}
 
