@@ -54,6 +54,11 @@ import {
   useScanner,
 } from "./hooks/useScanner";
 
+// Debugimage
+import type {
+  ScanDebugImage,
+} from "./hooks/useScanner";
+
 // Components
 import { ModeTabs } from "./components/ModeTabs";
 import { CameraPreview } from "./components/CameraPreview";
@@ -790,11 +795,137 @@ export default function App() {
 
   }, [scanHeight, scanWidth, zoom]);
 
+  // 前回のQR／OCR確認画像を削除
+  const clearScanDebugImages =
+    (): void => {
+      document
+        .getElementById(
+          "debugFull"
+        )
+        ?.remove();
+
+      document
+        .getElementById(
+          "debugCanvas"
+        )
+        ?.remove();
+    };
+
+  // QR／OCRで使用した画像を画面下部へ表示
+  const showScanDebugImages = (
+    debugImage?: ScanDebugImage
+  ): void => {
+    // 新しい画像表示前に前回画像を削除
+    clearScanDebugImages();
+
+    // Canvasを取得できなかった場合は表示しない
+    if (!debugImage) {
+      return;
+    }
+
+    const {
+      sourceCanvas,
+      cropCanvas,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+    } = debugImage;
+
+    // カメラ全体画像へ読取り範囲を描画
+    const sourceCtx =
+      sourceCanvas.getContext(
+        "2d"
+      );
+
+    if (sourceCtx) {
+      sourceCtx.strokeStyle =
+        "red";
+
+      sourceCtx.lineWidth = 5;
+
+      sourceCtx.strokeRect(
+        cropX,
+        cropY,
+        cropW,
+        cropH
+      );
+    }
+
+    // カメラ全体画像
+    sourceCanvas.style.width =
+      "100%";
+
+    sourceCanvas.style.height =
+      "auto";
+
+    sourceCanvas.style.maxWidth =
+      "450px";
+
+    sourceCanvas.style.display =
+      "block";
+
+    sourceCanvas.style.margin =
+      "10px auto 0";
+
+    sourceCanvas.style.border =
+      "2px solid blue";
+
+    sourceCanvas.id =
+      "debugFull";
+
+    // 実際に読取りへ使用した切り出し画像
+    cropCanvas.style.width =
+      "100%";
+
+    cropCanvas.style.height =
+      "auto";
+
+    cropCanvas.style.maxWidth =
+      "450px";
+
+    cropCanvas.style.objectFit =
+      "contain";
+
+    cropCanvas.style.display =
+      "block";
+
+    cropCanvas.style.margin =
+      "10px auto 0";
+
+    cropCanvas.style.border =
+      "2px solid red";
+
+    cropCanvas.id =
+      "debugCanvas";
+
+    // TEST／PRODUCTIONの両モードで表示
+    document.body.appendChild(
+      sourceCanvas
+    );
+
+    document.body.appendChild(
+      cropCanvas
+    );
+  };
 
   // QR読取り結果を画面へ反映
   const scanQr = async () => {
+    // スキャン開始時に前回画像を削除
+    clearScanDebugImages();
+
     const scanResult =
       await scanQrFromCamera();
+
+    // 成功・失敗判定より前に確認画像を表示
+    if (
+      "debugImage" in
+      scanResult
+    ) {
+      showScanDebugImages(
+        scanResult.debugImage
+      );
+    }
 
     if (
       scanResult.status ===
@@ -892,8 +1023,21 @@ export default function App() {
 
   // OCR結果を画面とProductionへ反映
   const runOCR = async () => {
+    // OCR開始時に前回画像を削除
+    clearScanDebugImages();
+
     const ocrResult =
       await runOCRFromCamera();
+
+    // 成功・失敗判定より前に確認画像を表示
+    if (
+      "debugImage" in
+      ocrResult
+    ) {
+      showScanDebugImages(
+        ocrResult.debugImage
+      );
+    }
 
     if (
       ocrResult.status ===
@@ -1011,85 +1155,7 @@ export default function App() {
     const {
       text,
       confidence,
-      sourceCanvas,
-      cropCanvas,
-      cropX,
-      cropY,
-      cropW,
-      cropH,
     } = ocrResult;
-
-    // TEST MODE用の切り出し範囲表示
-    const sourceCtx =
-      sourceCanvas.getContext(
-        "2d"
-      );
-
-    if (sourceCtx) {
-      sourceCtx.strokeStyle =
-        "red";
-
-      sourceCtx.lineWidth = 5;
-
-      sourceCtx.strokeRect(
-        cropX,
-        cropY,
-        cropW,
-        cropH
-      );
-    }
-
-    sourceCanvas.style.width =
-      "100%";
-
-    sourceCanvas.style.maxWidth =
-      "450px";
-
-    sourceCanvas.style.border =
-      "2px solid blue";
-
-    document
-      .getElementById(
-        "debugFull"
-      )
-      ?.remove();
-
-    sourceCanvas.id =
-      "debugFull";
-
-    cropCanvas.style.height =
-      "auto";
-
-    cropCanvas.style.objectFit =
-      "contain";
-
-    cropCanvas.style.width =
-      "100%";
-
-    cropCanvas.style.maxWidth =
-      "450px";
-
-    cropCanvas.style.border =
-      "2px solid red";
-
-    document
-      .getElementById(
-        "debugCanvas"
-      )
-      ?.remove();
-
-    cropCanvas.id =
-      "debugCanvas";
-
-    if (tab === "eval") {
-      document.body.appendChild(
-        sourceCanvas
-      );
-
-      document.body.appendChild(
-        cropCanvas
-      );
-    }
 
     const regex =
       items[currentIndex]
