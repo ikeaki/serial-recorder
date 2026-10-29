@@ -54,11 +54,6 @@ import {
   useScanner,
 } from "./hooks/useScanner";
 
-// Debugimage
-import type {
-  ScanDebugImage,
-} from "./hooks/useScanner";
-
 // Components
 import { ModeTabs } from "./components/ModeTabs";
 import { CameraPreview } from "./components/CameraPreview";
@@ -156,6 +151,7 @@ export default function App() {
 
   const {
     ocrReady,
+    ocrInitError,
     scanning,
     scanQr:
     scanQrFromCamera,
@@ -179,18 +175,6 @@ export default function App() {
   const [overlayMessage, setOverlayMessage] = useState("");
 
   const [overlayColor, setOverlayColor] = useState("#00ff00");
-
-  // 最後にスキャンしたカメラ全体画像
-  const [
-    debugFullImage,
-    setDebugFullImage,
-  ] = useState("");
-
-  // 最後にスキャンした切り出し画像
-  const [
-    debugCropImage,
-    setDebugCropImage,
-  ] = useState("");
 
   // 表示言語を変更し、次回起動用に保存
   const changeLanguage = async (
@@ -807,85 +791,11 @@ export default function App() {
 
   }, [scanHeight, scanWidth, zoom]);
 
-  // QR／OCRで使用した最新画像を保存
-  const saveScanDebugImages = (
-    debugImage?: ScanDebugImage
-  ): void => {
-    if (!debugImage) {
-      return;
-    }
-
-    const {
-      sourceCanvas,
-      cropCanvas,
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-    } = debugImage;
-
-    // 元Canvasを書き換えないよう複製
-    const fullCanvas =
-      document.createElement(
-        "canvas"
-      );
-
-    fullCanvas.width =
-      sourceCanvas.width;
-
-    fullCanvas.height =
-      sourceCanvas.height;
-
-    const fullContext =
-      fullCanvas.getContext("2d");
-
-    if (!fullContext) {
-      return;
-    }
-
-    fullContext.drawImage(
-      sourceCanvas,
-      0,
-      0
-    );
-
-    // 読取範囲を赤枠で表示
-    fullContext.strokeStyle = "red";
-    fullContext.lineWidth = 5;
-
-    fullContext.strokeRect(
-      cropX,
-      cropY,
-      cropW,
-      cropH
-    );
-
-    // 表示用画像としてstateへ保存
-    setDebugFullImage(
-      fullCanvas.toDataURL(
-        "image/png"
-      )
-    );
-
-    setDebugCropImage(
-      cropCanvas.toDataURL(
-        "image/png"
-      )
-    );
-  };
 
   // QR読取り結果を画面へ反映
   const scanQr = async () => {
     const scanResult =
       await scanQrFromCamera();
-
-    if (
-      "debugImage" in scanResult
-    ) {
-      saveScanDebugImages(
-        scanResult.debugImage
-      );
-    }
 
     if (
       scanResult.status ===
@@ -983,17 +893,8 @@ export default function App() {
 
   // OCR結果を画面とProductionへ反映
   const runOCR = async () => {
-
     const ocrResult =
       await runOCRFromCamera();
-
-    if (
-      "debugImage" in ocrResult
-    ) {
-      saveScanDebugImages(
-        ocrResult.debugImage
-      );
-    }
 
     if (
       ocrResult.status ===
@@ -1111,7 +1012,85 @@ export default function App() {
     const {
       text,
       confidence,
+      sourceCanvas,
+      cropCanvas,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
     } = ocrResult;
+
+    // TEST MODE用の切り出し範囲表示
+    const sourceCtx =
+      sourceCanvas.getContext(
+        "2d"
+      );
+
+    if (sourceCtx) {
+      sourceCtx.strokeStyle =
+        "red";
+
+      sourceCtx.lineWidth = 5;
+
+      sourceCtx.strokeRect(
+        cropX,
+        cropY,
+        cropW,
+        cropH
+      );
+    }
+
+    sourceCanvas.style.width =
+      "100%";
+
+    sourceCanvas.style.maxWidth =
+      "450px";
+
+    sourceCanvas.style.border =
+      "2px solid blue";
+
+    document
+      .getElementById(
+        "debugFull"
+      )
+      ?.remove();
+
+    sourceCanvas.id =
+      "debugFull";
+
+    cropCanvas.style.height =
+      "auto";
+
+    cropCanvas.style.objectFit =
+      "contain";
+
+    cropCanvas.style.width =
+      "100%";
+
+    cropCanvas.style.maxWidth =
+      "450px";
+
+    cropCanvas.style.border =
+      "2px solid red";
+
+    document
+      .getElementById(
+        "debugCanvas"
+      )
+      ?.remove();
+
+    cropCanvas.id =
+      "debugCanvas";
+
+    if (tab === "eval") {
+      document.body.appendChild(
+        sourceCanvas
+      );
+
+      document.body.appendChild(
+        cropCanvas
+      );
+    }
 
     const regex =
       items[currentIndex]
@@ -1467,6 +1446,14 @@ export default function App() {
       {/* モード切替タブ */}
       <ModeTabs
         onProduction={() => {
+          document
+            .getElementById("debugFull")
+            ?.remove();
+
+          document
+            .getElementById("debugCanvas")
+            ?.remove();
+
           setTab("prod");
         }}
         onTest={() => {
@@ -1520,11 +1507,9 @@ export default function App() {
       {tab === "eval" && (
         <>
           <br />
-
           <h2>
             {t("result.latestScan")}
           </h2>
-
           <div
             style={{
               border: "1px solid #ccc",
@@ -1535,39 +1520,26 @@ export default function App() {
           >
             {result}
           </div>
-
-          {/* カメラ全体画像と読取範囲 */}
-          {debugFullImage && (
-            <img
-              src={debugFullImage}
-              alt="Scan full preview"
+          {/* OCR初期化エラーの調査用表示 */}
+          {ocrInitError && (
+            <div
               style={{
-                display: "block",
-                width: "100%",
-                maxWidth: "450px",
-                height: "auto",
-                margin: "10px auto 0",
-                border: "2px solid blue",
-              }}
-            />
-          )}
-
-          {/* 実際にQR／OCRへ渡した切り出し画像 */}
-          {debugCropImage && (
-            <img
-              src={debugCropImage}
-              alt="Scan crop preview"
-              style={{
-                display: "block",
-                width: "100%",
-                maxWidth: "450px",
-                height: "auto",
-                objectFit: "contain",
-                margin: "10px auto 0",
+                marginBottom: "12px",
+                padding: "10px",
                 border: "2px solid red",
+                borderRadius: "8px",
+                color: "#b91c1c",
+                background: "#fef2f2",
+                overflowWrap: "anywhere",
+                fontSize: "13px",
+                textAlign: "left",
               }}
-            />
+            >
+              OCR Init Error: {ocrInitError}
+            </div>
           )}
+
+
         </>
       )}
 

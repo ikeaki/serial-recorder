@@ -36,38 +36,16 @@ type UseScannerOptions = {
   cropBottomRate: number;
 };
 
-
-// QR／OCR共通の確認画像情報
-export type ScanDebugImage = {
-  // カメラ全体画像
-  sourceCanvas: HTMLCanvasElement;
-
-  // 実際に読取りへ使用した切り出し画像
-  cropCanvas: HTMLCanvasElement;
-
-  // 全体画像内の切り出し位置
-  cropX: number;
-  cropY: number;
-  cropW: number;
-  cropH: number;
-};
-
 export type QrScanResult =
   | {
     status: "success";
     text: string;
-    debugImage: ScanDebugImage;
   }
   | {
-    status: "timeout";
-    debugImage?: ScanDebugImage;
-  }
-  | {
-    status: "failed";
-    debugImage?: ScanDebugImage;
-  }
-  | {
-    status: "camera-not-ready";
+    status:
+    | "camera-not-ready"
+    | "timeout"
+    | "failed";
   };
 
 export type OcrScanResult =
@@ -75,23 +53,24 @@ export type OcrScanResult =
     status: "success";
     text: string;
     confidence: number;
-    debugImage: ScanDebugImage;
-  }
-  | {
-    status: "low-confidence";
-    confidence: number;
-    debugImage: ScanDebugImage;
-  }
-  | {
-    status: "failed";
-    confidence?: number;
-    debugImage?: ScanDebugImage;
+    sourceCanvas:
+    HTMLCanvasElement;
+    cropCanvas:
+    HTMLCanvasElement;
+    cropX: number;
+    cropY: number;
+    cropW: number;
+    cropH: number;
   }
   | {
     status:
     | "camera-not-ready"
     | "ocr-not-ready"
-    | "canvas-failed";
+    | "canvas-failed"
+    | "low-confidence"
+    | "failed";
+
+    confidence?: number;
   };
 
 
@@ -111,6 +90,11 @@ export const useScanner = ({
 
   const [ocrReady, setOcrReady] =
     useState(false);
+  // OCR初期化エラー
+  const [
+    ocrInitError,
+    setOcrInitError,
+  ] = useState("");
 
   const [scanning, setScanning] =
     useState(false);
@@ -131,24 +115,56 @@ export const useScanner = ({
 
     const initOCR =
       async (): Promise<void> => {
-        const worker =
-          await createWorker(
-            "eng"
+        try {
+          // 初期化開始時に状態をリセット
+          setOcrReady(false);
+          setOcrInitError("");
+
+          const worker =
+            await createWorker(
+              "eng",
+              1,
+              {
+                workerPath:
+                  "/tesseract/worker.min.js",
+
+                corePath:
+                  "/tesseract/core",
+
+                langPath:
+                  "/tesseract/lang",
+              }
+            );
+
+          if (cancelled) {
+            await worker.terminate();
+            return;
+          }
+
+          workerRef.current =
+            worker;
+
+          setOcrReady(true);
+        } catch (error) {
+          console.error(
+            "OCR initialization failed:",
+            error
           );
 
-        if (cancelled) {
-          await worker.terminate();
-          return;
+          const message =
+            error instanceof Error
+              ? `${error.name}: ${error.message}`
+              : String(error);
+
+          setOcrReady(false);
+          setOcrInitError(message);
         }
-
-        workerRef.current =
-          worker;
-
-        setOcrReady(true);
       };
 
+    // OCR Workerの初期化を開始
     void initOCR();
 
+    // コンポーネント終了時にOCR Workerを破棄
     return () => {
       cancelled = true;
 
@@ -166,6 +182,7 @@ export const useScanner = ({
     };
   }, []);
 
+  // QR／バーコード読取り
   const scanQr =
     async (): Promise<QrScanResult> => {
       if (
@@ -205,11 +222,6 @@ export const useScanner = ({
       const startTime =
         performance.now();
 
-      // タイムアウト・失敗時に返す最新画像
-      let lastDebugImage:
-        | ScanDebugImage
-        | undefined;
-
       try {
         while (
           performance.now() -
@@ -233,29 +245,8 @@ export const useScanner = ({
             );
           }
 
-          const {
-            sourceCanvas,
-            cropCanvas,
-            cropX,
-            cropY,
-            cropW,
-            cropH,
-          } = captured;
-
-          // 今回のQR読取りに使用した画像
-          const debugImage:
-            ScanDebugImage = {
-            sourceCanvas,
-            cropCanvas,
-            cropX,
-            cropY,
-            cropW,
-            cropH,
-          };
-
-          // 読取りに失敗しても最後の画像を返せるよう保持
-          lastDebugImage =
-            debugImage;
+          const { cropCanvas } =
+            captured;
 
           const image =
             cropCanvas.toDataURL(
@@ -301,15 +292,14 @@ export const useScanner = ({
               return {
                 status: "success",
                 text,
-                debugImage,
               };
             }
           } catch {
-            // 読取不能の場合は次の画像で再試行
+            // 読めない画像は次回へ
           }
 
           await new Promise<void>(
-            (resolve) => {
+            resolve => {
               window.setTimeout(
                 resolve,
                 scanIntervalMs
@@ -318,11 +308,8 @@ export const useScanner = ({
           );
         }
 
-        // タイムアウト時にも最後の確認画像を返す
         return {
           status: "timeout",
-          debugImage:
-            lastDebugImage,
         };
       } catch (error) {
         console.error(
@@ -330,11 +317,8 @@ export const useScanner = ({
           error
         );
 
-        // Canvas作成後の失敗なら確認画像を返す
         return {
           status: "failed",
-          debugImage:
-            lastDebugImage,
         };
       } finally {
         scanningRef.current =
@@ -344,17 +328,15 @@ export const useScanner = ({
       }
     };
 
+
+  // scanQr()の後に追加
+
   const runOCR =
     async (): Promise<OcrScanResult> => {
       const video =
         videoRef.current;
 
-      if (
-        !video ||
-        video.readyState < 2 ||
-        video.videoWidth === 0 ||
-        video.videoHeight === 0
-      ) {
+      if (!video) {
         return {
           status:
             "camera-not-ready",
@@ -378,12 +360,8 @@ export const useScanner = ({
       }
 
       ocrLoadingRef.current = true;
-      setOcrLoading(true);
 
-      // OCR途中で例外が発生した場合にも返す
-      let debugImage:
-        | ScanDebugImage
-        | undefined;
+      setOcrLoading(true);
 
       try {
         // OCR用Canvasを4倍で切り出す
@@ -413,16 +391,6 @@ export const useScanner = ({
           cropW,
           cropH,
         } = captured;
-
-        // 成功・失敗共通の確認画像
-        debugImage = {
-          sourceCanvas,
-          cropCanvas,
-          cropX,
-          cropY,
-          cropW,
-          cropH,
-        };
 
         const thresholds = [
           120,
@@ -552,7 +520,6 @@ export const useScanner = ({
               "low-confidence",
             confidence:
               bestConfidence,
-            debugImage,
           };
         }
 
@@ -561,7 +528,12 @@ export const useScanner = ({
           text: bestText,
           confidence:
             bestConfidence,
-          debugImage,
+          sourceCanvas,
+          cropCanvas,
+          cropX,
+          cropY,
+          cropW,
+          cropH,
         };
       } catch (error) {
         console.error(
@@ -571,19 +543,18 @@ export const useScanner = ({
 
         return {
           status: "failed",
-          debugImage,
         };
       } finally {
         // OCR実行状態を必ず解除
-        ocrLoadingRef.current =
-          false;
-
+        ocrLoadingRef.current = false;
         setOcrLoading(false);
       }
     };
 
+
   return {
     ocrReady,
+    ocrInitError,
     scanning,
     scanQr,
     ocrLoading,
