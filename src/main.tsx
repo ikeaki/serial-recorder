@@ -12,3 +12,10 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// Reactの初期描画開始後に起動確認表示を削除
+window.requestAnimationFrame(() => {
+  document
+    .getElementById("boot-status")
+    ?.remove();
+});
